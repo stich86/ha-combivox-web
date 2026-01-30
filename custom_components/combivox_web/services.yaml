@@ -1,0 +1,78 @@
+# Services per l'integrazione Combivox Amica Web
+
+arm_areas:
+  name: Arm areas
+  description: Arma le aree specificate della centrale antifurto
+  fields:
+    areas:
+      name: Areas
+      description: Lista di ID aree da armare (1-8)
+      required: true
+      example: [1, 2, 3]
+      selector:
+        select:
+          multiple: true
+          options:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+            - "8"
+    mode:
+      name: Mode
+      description: Modalità di armamento
+      required: false
+      default: away
+      example: away
+      selector:
+        select:
+          options:
+            - away
+            - home
+            - night
+    force:
+      name: Force
+      description: Armamento immediato senza ritardi
+      required: false
+      default: false
+      example: false
+      selector:
+        boolean:
+
+disarm_areas:
+  name: Disarm areas
+  description: Disarma le aree specificate della centrale antifurto
+  fields:
+    areas:
+      name: Areas
+      description: Lista di ID aree da disarmare (1-8), default tutte
+      required: false
+      example: [1, 2, 3]
+      default: [1, 2, 3, 4, 5, 6, 7, 8]
+      selector:
+        select:
+          multiple: true
+          options:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+            - "8"
+
+set_force_mode:
+  name: Set force mode
+  description: Imposta la modalità forza per l'armamento immediato
+  fields:
+    enabled:
+      name: Enabled
+      description: Abilita modalità force
+      required: true
+      example: true
+      selector:
+        boolean:

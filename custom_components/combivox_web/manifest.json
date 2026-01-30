@@ -1,0 +1,15 @@
+{
+  "domain": "combivox_web",
+  "name": "Combivox Amica Web",
+  "codeowners": ["@stich86"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/stich86/ha-combivox-web",
+  "homekit": {},
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/stich86/ha-combivox-web/issues",
+  "requirements": [],
+  "ssdp": [],
+  "version": "1.0.1",
+  "zeroconf": []
+}

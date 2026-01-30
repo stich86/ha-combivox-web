@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Development files
+TODO.md
+esempi_xml/
+script_supporto/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Home Assistant
+*.jsonc
+!custom_components/*/translations/*.json
+
+# Backup directories
+*-backup-*/
+backup*/
+backups/
+
+# Logs
+*.log
