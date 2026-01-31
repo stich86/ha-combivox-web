@@ -131,7 +131,7 @@
         "state": {
           "ok": "OK",
           "gsm_trouble": "Anomalia GSM",
-          "bus_trouble": "Anomalia Bus",
+          "tamper_trouble": "Tamper Centrale",
           "unknown": "Sconosciuto"
         }
       }

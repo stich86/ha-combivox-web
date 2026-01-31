@@ -67,7 +67,7 @@ GSM_STATUS_HEX_TO_HA_STATE = {
 ANOMALIES_HEX_TO_HA_STATE = {
     "00": "ok",
     "40": "gsm_trouble",
-    "01": "bus_trouble"
+    "01": "tamper_trouble"
 }
 
 # XML endpoints

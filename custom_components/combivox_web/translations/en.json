@@ -131,7 +131,7 @@
         "state": {
           "ok": "OK",
           "gsm_trouble": "GSM Trouble",
-          "bus_trouble": "Bus Trouble",
+          "tamper_trouble": "Alarm Tamper",
           "unknown": "Unknown"
         }
       }
