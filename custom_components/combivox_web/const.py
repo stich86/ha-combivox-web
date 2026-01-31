@@ -63,6 +63,12 @@ GSM_STATUS_HEX_TO_HA_STATE = {
     "00": "ok"
 }
 
+# Anomalies hex to HA state mapping (translatable) - 171st byte from <si> start (after FFFFFF marker)
+ANOMALIES_HEX_TO_HA_STATE = {
+    "00": "ok",
+    "40": "gsm_trouble"
+}
+
 # XML endpoints
 STATUS_URL = "/status9.xml"
 LABELZONE_URL = "/labelZone16.xml"
@@ -72,6 +78,30 @@ LOGIN2_URL = "/login2.cgi"
 INSAREA_URL = "/insAree.xml"
 NUMMACRO_URL = "/numMacro.xml"
 EXECCHANGEIMP_URL = "/execChangeImp.xml"
+EXECDELMEM_URL = "/execDelMem.xml"
+NUMTROUBLE_URL = "/numTrouble.xml"
+NUMMEMPROG_URL = "/numMemProg.xml"
+LABELMEM_URL = "/labelMem.xml"
+
+# Trouble ID to description mapping (from labelTrouble.xml t0-t15)
+TROUBLE_ID_TO_DESCRIPTION = {
+    0: {"en": "Panel tamper", "it": "Tamper centrale"},
+    1: {"en": "Panel network anomaly", "it": "Anomalia rete centrale"},
+    2: {"en": "Panel fuse 1 failure", "it": "Avaria fusib.1 centrale"},
+    3: {"en": "Panel fuse 2 failure", "it": "Avaria fusib.2 centrale"},
+    4: {"en": "Panel fuse 3 failure", "it": "Avaria fusib.3 centrale"},
+    5: {"en": "Phone line absent", "it": "Assenza linea telefonica"},
+    6: {"en": "GSM anomaly", "it": "Anomalia GSM"},
+    7: {"en": "Panel battery anomaly", "it": "Anomalia batteria centrale"},
+    8: {"en": "Video battery anomaly", "it": "Anomalia batteria video"},
+    9: {"en": "Panel battery alarm", "it": "Allarme batteria centrale"},
+    10: {"en": "Video battery alarm", "it": "Allarme batteria video"},
+    11: {"en": "Panel system tamper", "it": "Manomissione sistema centrale"},
+    12: {"en": "Video system tamper", "it": "Manomissione sistema video"},
+    13: {"en": "SIM RF module anomaly", "it": "Anomalia modulo rf SIM"},
+    14: {"en": "SIM card expired", "it": "Scheda SIM scaduta"},
+    15: {"en": "Insufficient credit", "it": "Credito residuo insufficiente"}
+}
 
 # Alarm hex to HA state mapping (priority states checked first)
 ALARM_HEX_TO_HA_STATE = {

@@ -16,6 +16,10 @@ from .const import (
     INSAREA_URL,
     NUMMACRO_URL,
     EXECCHANGEIMP_URL,
+    EXECDELMEM_URL,
+    NUMTROUBLE_URL,
+    NUMMEMPROG_URL,
+    LABELMEM_URL,
     CONF_IP_ADDRESS,
     CONF_PORT,
     CONF_CODE,
@@ -827,6 +831,58 @@ class CombivoxWebClient:
             _LOGGER.error("Toggle zone command error: %s", e)
             return False
 
+    async def clear_alarm_memory(self) -> bool:
+        """
+        Clear alarm memory.
+
+        This sends a command to clear the alarm memory on the panel.
+
+        Returns:
+            True if command sent successfully
+        """
+        try:
+            # Reauthenticate if not authenticated
+            if not self._auth.is_authenticated():
+                _LOGGER.warning("Not authenticated, attempting reauthentication...")
+                if not await self._auth.authenticate():
+                    _LOGGER.error("Reauthentication failed")
+                    return False
+                _LOGGER.info("Reauthentication successful")
+
+            session = self._auth.get_session()
+            url = f"{self.base_url}{EXECDELMEM_URL}"
+
+            # Payload: comandi=del
+            data = {
+                "comandi": "del"
+            }
+
+            headers = {}
+            cookie = self._auth.get_cookie()
+            if cookie:
+                headers["Cookie"] = cookie
+
+            _LOGGER.debug("Clear alarm memory command: URL=%s, cookie=%s, payload=%s",
+                         url, cookie, data)
+
+            async with session.post(url, headers=headers, data=data, timeout=self.timeout) as response:
+                response_text = await response.text()
+
+                _LOGGER.debug("Clear alarm memory response: status=%d, body=%s",
+                             response.status, response_text[:200] if response_text else "None")
+
+                if response.status == 200:
+                    _LOGGER.info("Alarm memory cleared successfully")
+                    return True
+                else:
+                    _LOGGER.error("Clear alarm memory command failed: HTTP %d, response=%s, payload=%s",
+                                response.status, response_text[:200] if response_text else "None", data)
+                    return False
+
+        except Exception as e:
+            _LOGGER.error("Clear alarm memory command error: %s", e)
+            return False
+
     async def execute_macro(self, macro_id: int, macro_name: str = None) -> bool:
         """
         Execute a macro (scenario).
@@ -1187,6 +1243,145 @@ class CombivoxWebClient:
         except Exception as e:
             _LOGGER.error("Error parsing system info HTML: %s", e)
             return None
+
+    async def get_anomalies_info(self) -> Optional[int]:
+        """
+        Get active anomaly/trouble ID from the panel.
+
+        Returns:
+            Active anomaly ID (0-15) from numTrouble.xml c0, or None if no anomaly
+        """
+        try:
+            # Reauthenticate if not authenticated
+            if not self._auth.is_authenticated():
+                _LOGGER.warning("Not authenticated, attempting reauthentication...")
+                if not await self._auth.authenticate():
+                    _LOGGER.error("Reauthentication failed")
+                    return None
+                _LOGGER.info("Reauthentication successful")
+
+            session = self._auth.get_session()
+            headers = {}
+            cookie = self._auth.get_cookie()
+            if cookie:
+                headers["Cookie"] = cookie
+
+            # Get active anomaly ID from numTrouble.xml
+            url = f"{self.base_url}{NUMTROUBLE_URL}"
+            async with session.get(url, headers=headers, timeout=self.timeout) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to get numTrouble: HTTP %d", response.status)
+                    return None
+
+                xml_content = await response.text()
+                _LOGGER.debug("numTrouble.xml response: %s", xml_content[:200])
+
+                # Parse active anomaly ID from <c0>id</c0>
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(xml_content)
+                c0_elem = root.find("c0")
+                if c0_elem is None or not c0_elem.text:
+                    _LOGGER.warning("No c0 element in numTrouble.xml")
+                    return None
+
+                try:
+                    anomaly_id = int(c0_elem.text.strip())
+                    _LOGGER.info("Retrieved active anomaly ID: %d", anomaly_id)
+                    return anomaly_id
+                except ValueError:
+                    _LOGGER.error("Invalid anomaly ID: %s", c0_elem.text)
+                    return None
+
+        except Exception as e:
+            _LOGGER.error("Error getting anomalies info: %s", e)
+            return None
+
+    async def get_alarm_memory_info(self) -> List[Dict[str, Any]]:
+        """
+        Get alarm memory information from the panel.
+
+        Returns:
+            List of alarm memory entries with id and message
+        """
+        try:
+            # Reauthenticate if not authenticated
+            if not self._auth.is_authenticated():
+                _LOGGER.warning("Not authenticated, attempting reauthentication...")
+                if not await self._auth.authenticate():
+                    _LOGGER.error("Reauthentication failed")
+                    return []
+                _LOGGER.info("Reauthentication successful")
+
+            session = self._auth.get_session()
+            headers = {}
+            cookie = self._auth.get_cookie()
+            if cookie:
+                headers["Cookie"] = cookie
+
+            # Step 1: Get number of alarm memories
+            url = f"{self.base_url}{NUMMEMPROG_URL}"
+            async with session.get(url, headers=headers, timeout=self.timeout) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to get numMemProg: HTTP %d", response.status)
+                    return []
+
+                xml_content = await response.text()
+                _LOGGER.debug("numMemProg.xml response: %s", xml_content[:200])
+
+                # Parse number of memories from <c0>count</c0>
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(xml_content)
+                c0_elem = root.find("c0")
+                if c0_elem is None or not c0_elem.text:
+                    _LOGGER.warning("No c0 element in numMemProg.xml")
+                    return []
+
+                memory_count = c0_elem.text.strip()
+                _LOGGER.debug("Alarm memory count: %s", memory_count)
+
+                # If memory_count is just the count as integer, we need to get individual IDs
+                # For now, assume it's the actual ID (like "1058")
+                # If it's a count, we would need to iterate and get each label
+
+            # Step 2: Get alarm memory label
+            url = f"{self.base_url}{LABELMEM_URL}"
+            payload = f"comandi={memory_count};"
+
+            async with session.post(url, headers=headers, data=payload, timeout=self.timeout) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to get labelMem: HTTP %d", response.status)
+                    return []
+
+                xml_content = await response.text()
+                _LOGGER.debug("labelMem.xml response: %s", xml_content[:200])
+
+                # Parse alarm memory label
+                root = ET.fromstring(xml_content)
+                mem_tag = root.find(f"m{memory_count}")
+                if mem_tag is None or not mem_tag.text:
+                    _LOGGER.warning("No m%s element in labelMem.xml", memory_count)
+                    return []
+
+                hex_text = mem_tag.text.strip()
+
+                # Convert hex to ASCII using bytes.fromhex().decode()
+                try:
+                    message = bytes.fromhex(hex_text).decode('utf-8')
+                except Exception as e:
+                    _LOGGER.error("Error converting hex to ASCII: %s", e)
+                    message = hex_text  # Fallback to raw hex
+
+                alarm_memory = [{
+                    "id": memory_count,
+                    "message": message
+                }]
+
+                _LOGGER.info("Retrieved alarm memory: %s", message)
+                return alarm_memory
+
+        except Exception as e:
+            _LOGGER.error("Error getting alarm memory info: %s", e)
+            return []
 
     async def close(self):
         """Close the connection."""

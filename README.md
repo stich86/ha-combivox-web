@@ -10,7 +10,7 @@ Home Assistant integration for Combivox alarm panels (Amica/Elisa) via AmicaWeb/
 - **Alarm Control Panel**: Arm Away/Home/Night and Disarm with configurable modes
 - **Zone Bypass Buttons**: Toggle zone inclusion/exclusion
 - **Macro/Scenario Buttons**: Execute panel macros and scenarios
-- **System Sensors**: Device model, IP address, alarm state, date/time, gsm status
+- **System Sensors**: Device model (WIP), alarm state, date/time, gsm status, anomalies
 - **Label Caching**: Saves zone/area names to JSON file for fast loading
 - **Smart Polling**: Single unified coordinator for efficient updates
 - **Automatic Recovery**: Handles temporary network issues and session expiration with automatic retry
@@ -101,6 +101,13 @@ For each arm type (Away/Home/Night):
 - `sensor.combivox_system_status`: Current alarm state
 - `sensor.combivox_model`: Device model name
 - `sensor.combivox_datetime`: Panel date and time
+- `sensor.combivox_gsm_status`: GSM connection status (ok/searching/no_sim/unknown)
+- `sensor.combivox_gsm_operator`: GSM operator name (vodafone/tim/wind/combivox/other/unknown)
+- `sensor.combivox_gsm_signal`: Signal strength percentage (0-100%)
+- `sensor.combivox_anomalies`: System anomalies status (ok/gsm_trouble/bus_trouble/unknown)
+
+### Diagnostic Buttons
+- `button.combivox_clear_alarm_memory`: Clear alarm memory from panel
 
 ### Zone Binary Sensors
 For each zone with a configured name:
@@ -232,6 +239,57 @@ Only macros with **configured names** are created as buttons:
 2. Check cached config: `/config/combivox_web/config_IP_PORT.json` for "macros" section
 3. Enable debug logging and look for "Parsed macro X: name" messages
 4. Verify macros have names in the panel configuration
+
+## Download Diagnostics
+
+The integration supports downloading diagnostic data to help troubleshoot issues:
+
+### How to Download
+
+1. In Home Assistant, go to **Settings** → **Devices & Services**
+2. Find the **Combivox Amica Web** integration
+3. Click the three dots menu (⋮) next to the integration
+4. Select **Download Diagnostics**
+5. A JSON file will be downloaded with comprehensive diagnostic information
+
+### Diagnostic Data Includes
+
+**Connection Info:**
+- IP address, port, base URL, timeout
+- Coordinator update interval and last update status
+
+**Current State:**
+- Alarm state and hex codes
+- Armed areas list
+- Zone status (total zones, zones with alarm memory including names)
+- Area status (total areas, armed areas with names)
+- GSM status (signal strength, operator, status)
+- Anomalies (hex code + active anomaly with bilingual descriptions)
+
+**Configuration:**
+- Zones, areas, and macros configuration from panel
+- Alarm control panel settings (which macros are used for arm/disarm)
+
+**Device Info:**
+- Model, firmware version, Amicaweb type, web server version, serial number
+
+**Live Panel Data:**
+- Active anomalies/troubles (ID and bilingual description)
+- Alarm memory entries (ID and decoded message)
+
+**Note:** Sensitive data (codes) are automatically excluded from diagnostic exports.
+
+### Diagnostic Entities
+
+The integration also provides diagnostic entities for real-time monitoring:
+
+- **`sensor.combivox_anomalies`**: System anomalies status
+  - States: OK, GSM Trouble, Bus Trouble, Check Panel
+  - Attribute: Raw hex value for debugging
+
+- **`button.combivox_clear_alarm_memory`**: Clear alarm memory button
+  - Clears alarm memory from panel
+  - Requires confirmation in UI
 
 ### Options Not Saving/Loading
 
