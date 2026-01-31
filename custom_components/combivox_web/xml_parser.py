@@ -292,6 +292,27 @@ class CombivoxXMLParser:
                 _LOGGER.debug("Buffer too short for GSM parsing (len=%d)", len(si))
                 gsm_data = {}
 
+            # Parse anomalies data from byte 171 after FFFFFF marker
+            # Byte 171 (0-indexed from after marker): anomalies status
+            # There are 340 chars (170 bytes) before, byte is at positions 340-341 (0-indexed after marker)
+            anomalies_data = {}
+            if len(si) >= marker_pos + 346 + 2:  # Need marker (6) + 340 + 2 (byte) = 348 chars
+                try:
+                    # Position: marker_pos + 6 (end of FFFFFF) + 340 = marker_pos + 346
+                    pos_start = marker_pos + 346
+                    pos_end = marker_pos + 348
+                    anomalies_hex = si[pos_start:pos_end]
+                    anomalies_data = {
+                        "anomalies_hex": anomalies_hex
+                    }
+                    _LOGGER.debug("Anomalies data: pos_start=%d pos_end=%d hex=%s", pos_start, pos_end, anomalies_hex)
+                except (ValueError, IndexError) as e:
+                    _LOGGER.warning("Failed to parse anomalies data: %s", e)
+                    anomalies_data = {}
+            else:
+                _LOGGER.debug("Buffer too short for anomalies parsing (len=%d)", len(si))
+                anomalies_data = {}
+
             # Extract areas hex state
             # CORRECT STRUCTURE (based on user analysis):
             # Position 42 (byte 54): AREAS STATE (4 bytes)
@@ -465,6 +486,7 @@ class CombivoxXMLParser:
             return {
                 "datetime": datetime_obj,
                 "gsm": gsm_data,
+                "anomalies": anomalies_data,
                 "status_hex": status_hex,
                 "state": state,
                 "armed_areas": armed_areas,

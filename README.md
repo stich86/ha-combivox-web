@@ -10,7 +10,7 @@ Home Assistant integration for Combivox alarm panels (Amica/Elisa) via AmicaWeb/
 - **Alarm Control Panel**: Arm Away/Home/Night and Disarm with configurable modes
 - **Zone Bypass Buttons**: Toggle zone inclusion/exclusion
 - **Macro/Scenario Buttons**: Execute panel macros and scenarios
-- **System Sensors**: Device model, IP address, alarm state, date/time, gsm status
+- **System Sensors**: Device model (WIP), alarm state, date/time, gsm status, anomalies
 - **Label Caching**: Saves zone/area names to JSON file for fast loading
 - **Smart Polling**: Single unified coordinator for efficient updates
 - **Automatic Recovery**: Handles temporary network issues and session expiration with automatic retry

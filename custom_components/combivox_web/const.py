@@ -63,6 +63,13 @@ GSM_STATUS_HEX_TO_HA_STATE = {
     "00": "ok"
 }
 
+# Anomalies hex to HA state mapping (translatable) - 171st byte from <si> start (after FFFFFF marker)
+ANOMALIES_HEX_TO_HA_STATE = {
+    "00": "ok",
+    "40": "gsm_trouble",
+    "01": "bus_trouble"
+}
+
 # XML endpoints
 STATUS_URL = "/status9.xml"
 LABELZONE_URL = "/labelZone16.xml"

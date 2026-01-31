@@ -13,7 +13,8 @@ from .base import CombivoxWebClient
 from .const import (
     DOMAIN, DATA_COORDINATOR, DATA_CONFIG,
     GSM_STATUS_HEX_TO_HA_STATE,
-    GSM_OPERATOR_HEX_TO_NAME
+    GSM_OPERATOR_HEX_TO_NAME,
+    ANOMALIES_HEX_TO_HA_STATE
 )
 from .coordinator import CombivoxDataUpdateCoordinator
 
@@ -51,6 +52,9 @@ async def async_setup_entry(
     entities.append(CombivoxGSMStatusSensor(coordinator, device_info))
     entities.append(CombivoxGSMOperatorSensor(coordinator, device_info))
     entities.append(CombivoxGSMSignalSensor(coordinator, device_info))
+
+    # Add anomalies sensor
+    entities.append(CombivoxAnomaliesSensor(coordinator, device_info))
 
     _LOGGER.info("Adding %d system sensors", len(entities))
 
@@ -339,6 +343,47 @@ class CombivoxGSMSignalSensor(SensorEntity):
         gsm_data = system_data.get("gsm", {})
         return {
             "signal_bars": gsm_data.get("signal_bars", 0)
+        }
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return not self.coordinator._panel_unavailable
+
+
+class CombivoxAnomaliesSensor(SensorEntity):
+    """Sensor for anomalies/trouble status."""
+
+    def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
+        """Initialize the anomalies sensor."""
+        self.coordinator = coordinator
+
+        self._attr_unique_id = "combivox_anomalies"
+        self._attr_has_entity_name = True
+        self._attr_device_info = device_info
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_icon = "mdi:alert-circle"
+        self._attr_translation_key = "combivox_anomalies"
+
+    @property
+    def native_value(self) -> str:
+        """Return the anomalies status."""
+        system_data = self.coordinator.data or {}
+        anomalies_data = system_data.get("anomalies", {})
+
+        if not anomalies_data:
+            return "unknown"
+
+        anomalies_hex = anomalies_data.get("anomalies_hex", "").upper()
+        return ANOMALIES_HEX_TO_HA_STATE.get(anomalies_hex, "unknown")
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Return additional state attributes."""
+        system_data = self.coordinator.data or {}
+        anomalies_data = system_data.get("anomalies", {})
+        return {
+            "anomalies_hex": anomalies_data.get("anomalies_hex", "")
         }
 
     @property
