@@ -131,9 +131,13 @@
         "state": {
           "ok": "OK",
           "gsm_trouble": "GSM Trouble",
-          "tamper_trouble": "Alarm Tamper",
-          "unknown": "Unknown"
+          "unknown": "Check panel"
         }
+      }
+    },
+    "button": {
+      "clear_alarm_memory": {
+        "name": "Clear Alarm Memory"
       }
     }
   },

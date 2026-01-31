@@ -73,6 +73,13 @@ async def async_setup_entry(
                     macro_name
                 ))
 
+    # Add clear alarm memory button
+    entities.append(CombivoxClearAlarmMemoryButton(
+        coordinator,
+        client,
+        device_info
+    ))
+
     _LOGGER.info("Adding %d macro (scenario) buttons", len(macros_config) if macros_config else 0)
     _LOGGER.info("Adding %d total buttons", len(entities))
 
@@ -198,4 +205,54 @@ class CombivoxMacroButton(ButtonEntity):
             _LOGGER.info("Macro %d (%s) executed successfully", self.macro_id, self.macro_name)
         else:
             _LOGGER.error("Failed to execute macro %d (%s)", self.macro_id, self.macro_name)
+
+
+class CombivoxClearAlarmMemoryButton(ButtonEntity):
+    """Button for clearing alarm memory."""
+
+    def __init__(
+        self,
+        coordinator: CombivoxDataUpdateCoordinator,
+        client: CombivoxWebClient,
+        device_info: Dict[str, Any]
+    ):
+        """Initialize the clear alarm memory button."""
+        self.coordinator = coordinator
+        self.client = client
+
+        self._attr_unique_id = "combivox_clear_alarm_memory"
+        self._attr_has_entity_name = True
+        self._attr_device_info = device_info
+        self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_icon = "mdi:delete-forever"
+        self._attr_translation_key = "clear_alarm_memory"
+
+    async def async_added_to_hass(self) -> None:
+        """Run when entity is added to HA."""
+        await super().async_added_to_hass()
+        # Register for coordinator updates
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self._handle_coordinator_update)
+        )
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return not self.coordinator._panel_unavailable
+
+    async def async_press(self, **kwargs: Any) -> None:
+        """Press the button - clear alarm memory."""
+        _LOGGER.info("Clearing alarm memory")
+
+        success = await self.client.clear_alarm_memory()
+        if success:
+            _LOGGER.info("Alarm memory cleared successfully")
+            # Refresh to get updated state
+            await self.coordinator.async_request_refresh()
+        else:
+            _LOGGER.error("Failed to clear alarm memory")
 

@@ -16,6 +16,7 @@ from .const import (
     INSAREA_URL,
     NUMMACRO_URL,
     EXECCHANGEIMP_URL,
+    EXECDELMEM_URL,
     CONF_IP_ADDRESS,
     CONF_PORT,
     CONF_CODE,
@@ -825,6 +826,58 @@ class CombivoxWebClient:
 
         except Exception as e:
             _LOGGER.error("Toggle zone command error: %s", e)
+            return False
+
+    async def clear_alarm_memory(self) -> bool:
+        """
+        Clear alarm memory.
+
+        This sends a command to clear the alarm memory on the panel.
+
+        Returns:
+            True if command sent successfully
+        """
+        try:
+            # Reauthenticate if not authenticated
+            if not self._auth.is_authenticated():
+                _LOGGER.warning("Not authenticated, attempting reauthentication...")
+                if not await self._auth.authenticate():
+                    _LOGGER.error("Reauthentication failed")
+                    return False
+                _LOGGER.info("Reauthentication successful")
+
+            session = self._auth.get_session()
+            url = f"{self.base_url}{EXECDELMEM_URL}"
+
+            # Payload: comandi=del
+            data = {
+                "comandi": "del"
+            }
+
+            headers = {}
+            cookie = self._auth.get_cookie()
+            if cookie:
+                headers["Cookie"] = cookie
+
+            _LOGGER.debug("Clear alarm memory command: URL=%s, cookie=%s, payload=%s",
+                         url, cookie, data)
+
+            async with session.post(url, headers=headers, data=data, timeout=self.timeout) as response:
+                response_text = await response.text()
+
+                _LOGGER.debug("Clear alarm memory response: status=%d, body=%s",
+                             response.status, response_text[:200] if response_text else "None")
+
+                if response.status == 200:
+                    _LOGGER.info("Alarm memory cleared successfully")
+                    return True
+                else:
+                    _LOGGER.error("Clear alarm memory command failed: HTTP %d, response=%s, payload=%s",
+                                response.status, response_text[:200] if response_text else "None", data)
+                    return False
+
+        except Exception as e:
+            _LOGGER.error("Clear alarm memory command error: %s", e)
             return False
 
     async def execute_macro(self, macro_id: int, macro_name: str = None) -> bool:

@@ -131,9 +131,13 @@
         "state": {
           "ok": "OK",
           "gsm_trouble": "Anomalia GSM",
-          "tamper_trouble": "Tamper Centrale",
-          "unknown": "Sconosciuto"
+          "unknown": "Verifica centrale"
         }
+      }
+    },
+    "button": {
+      "clear_alarm_memory": {
+        "name": "Cancella Memoria Allarmi"
       }
     }
   },

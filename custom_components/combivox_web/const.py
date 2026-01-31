@@ -66,8 +66,7 @@ GSM_STATUS_HEX_TO_HA_STATE = {
 # Anomalies hex to HA state mapping (translatable) - 171st byte from <si> start (after FFFFFF marker)
 ANOMALIES_HEX_TO_HA_STATE = {
     "00": "ok",
-    "40": "gsm_trouble",
-    "01": "tamper_trouble"
+    "40": "gsm_trouble"
 }
 
 # XML endpoints
@@ -79,6 +78,7 @@ LOGIN2_URL = "/login2.cgi"
 INSAREA_URL = "/insAree.xml"
 NUMMACRO_URL = "/numMacro.xml"
 EXECCHANGEIMP_URL = "/execChangeImp.xml"
+EXECDELMEM_URL = "/execDelMem.xml"
 
 # Alarm hex to HA state mapping (priority states checked first)
 ALARM_HEX_TO_HA_STATE = {
