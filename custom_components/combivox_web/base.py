@@ -11,6 +11,7 @@ import aiohttp
 from .auth import CombivoxAuth
 from .const import (
     STATUS_URL,
+    JSCRIPT9_URL,
     LABELZONE_URL,
     LABELAREA_URL,
     INSAREA_URL,
@@ -24,12 +25,6 @@ from .const import (
     CONF_PORT,
     CONF_CODE,
     PERMMANUAL,
-    MODEL_PATTERN,
-    VERSION_PATTERN,
-    SERIAL_NUMBER_PATTERN,
-    FIRMWARE_FULL_PATTERN,
-    FIRMWARE_FALLBACK_PATTERN,
-    AMICAWEB_VERSION_PATTERN,
     MACRO_SUCCESS_CODE,
 )
 from .xml_parser import CombivoxXMLParser
@@ -106,17 +101,18 @@ class CombivoxWebClient:
             if not await self._authenticate_and_download_config():
                 return False
 
-            # Try to fetch system info and initial status, but don't fail if offline
+            # Try to fetch initial status, but don't fail if offline
             # (we might have cached config)
-            try:
-                await self._fetch_system_info()
-            except Exception as e:
-                _LOGGER.warning("Could not fetch system info (panel may be offline): %s", e)
-
             try:
                 await self._fetch_initial_status()
             except Exception as e:
                 _LOGGER.warning("Could not fetch initial status (panel may be offline): %s", e)
+
+            # Try to fetch device variant info from jscript9.js
+            try:
+                await self._fetch_device_info()
+            except Exception as e:
+                _LOGGER.warning("Could not fetch device variant info: %s", e)
 
             # If we have config (cached or fresh), connection is successful enough
             return self.is_config_loaded()
@@ -177,18 +173,6 @@ class CombivoxWebClient:
 
         return True
 
-    async def _fetch_system_info(self) -> None:
-        """
-        Fetch system information (firmware, model).
-
-        Updates the _device_info attribute with model, firmware versions,
-        and other system details from the panel.
-        """
-        system_info = await self._fetch_system_info_internal()
-        if system_info:
-            self._device_info = system_info
-            _LOGGER.info("System info fetched: model=%s", system_info.get("model"))
-
     async def _fetch_initial_status(self) -> None:
         """
         Fetch initial alarm status.
@@ -208,8 +192,8 @@ class CombivoxWebClient:
                 "state": status.get("state", "unknown")
             })
 
-            _LOGGER.debug("Connected: model=%s, state=%s",
-                       self._device_info.get("model", "Amica 64 GSM"),
+            _LOGGER.debug("Connected: variant=%s, state=%s",
+                       self._device_info.get("variant", "Unknown"),
                        self._device_info.get("state"))
 
     async def _download_prog_state_config(self) -> Optional[Dict[str, List[Dict[str, Any]]]]:
@@ -973,276 +957,107 @@ class CombivoxWebClient:
 
     def get_device_info_for_ha(self) -> Dict[str, Any]:
         """Return device info formatted for Home Assistant."""
+        # Get variant from device info (fetched from jscript9.js)
         device_info = self._device_info or {}
+        variant = device_info.get("variant", "Amica + AmicaWeb")
 
-        # Extract version information
-        firmware_version = device_info.get("firmware_version", "Unknown")
-        amicaweb_version = device_info.get("amicaweb_version", "Unknown")
-        web_server_version = device_info.get("web_server_version", "Unknown")
-
-        # Format sw_version as: "2.2, AmicaWEB 2.2, Web 2.5"
-        if firmware_version != "Unknown" and amicaweb_version != "Unknown" and web_server_version != "Unknown":
-            sw_version = f"{firmware_version}, AmicaWEB {amicaweb_version}, Web {web_server_version}"
-        else:
-            sw_version = "Unknown"
-
-        # Build device info dictionary
-        # Use a simple identifier without IP:PORT to avoid name changes
+        # Build device info dictionary with variant as model
         info = {
             "identifiers": {("combivox_web", f"alarm_{self.ip_address.replace('.', '_')}")},
             "name": "Combivox Alarm",
             "manufacturer": "Combivox",
-            "model": device_info.get('model', 'Amica'),
-            "sw_version": sw_version,
-            "configuration_url": f"{self.base_url}/system"
+            "model": variant,  # Use variant (e.g., "Amica 64 LTE + AmicaWeb")
+            "configuration_url": self.base_url
         }
-
-        # Add serial number if available
-        serial_number = device_info.get("serial_number")
-        if serial_number and serial_number != "Unknown":
-            info["serial_number"] = serial_number
 
         return info
 
-    async def _fetch_system_info_internal(self) -> Optional[Dict[str, Any]]:
+    async def _fetch_device_info(self) -> None:
         """
-        Fetch system information from /system/index.html using technical code.
+        Fetch device variant information from jscript9.js.
 
-        The system requires DUAL authentication:
-        1. Login with user/master code → get user cookie
-        2. Login with technical code → get technical cookie
-        3. Fetch page with BOTH cookies
+        Parses JavaScript file to extract:
+        - vertype: panel type (e.g., "AMICA 64 LTE")
+        - typWeb: web interface type (e.g., "Amicaweb", "Smartweb")
 
         Returns:
-            Dict with system info or None if error
+            None (updates self._device_info["variant"])
         """
-        import asyncio
         import re
-        import base64
-        import random
 
         try:
-            _LOGGER.info("Fetching system info from %s/system (dual auth required)", self.base_url)
+            # Get authenticated session
+            session = self._auth.get_session()
+            if not session:
+                _LOGGER.warning("No session available for device info fetch")
+                return
 
-            # Step 1: Generate password and authenticate with USER CODE to get user cookie
-            _LOGGER.info("Step 1: Authenticating with user code")
-            if not await self._auth.is_authenticated():
-                if not await self._auth.authenticate():
-                    _LOGGER.error("User authentication failed")
-                    return None
+            url = f"{self.base_url}{JSCRIPT9_URL}"
+            _LOGGER.debug("Fetching device info from %s", url)
 
-            user_cookie = self._auth.get_cookie()
-            _LOGGER.debug("User cookie obtained: %s", user_cookie)
-
-            # Step 2: Generate password and authenticate with TECHNICAL CODE to get technical cookie
-            _LOGGER.info("Step 2: Authenticating with technical code")
-
-            # Generate dynamic password using tech_code (same logic as auth.py)
-            PERMGEN = random.sample(range(1, 9), 8)
-            RAND_LAST = f"{random.randint(0, 99):02d}"
-            RAND_BEGIN = f"{random.randint(0, 99):02d}"
-
-            TVALUE1 = self.tech_code + RAND_LAST
-            TVALUE2 = "".join(TVALUE1[t - 1] for t in PERMMANUAL)
-            TVALUE3 = "".join(TVALUE2[t - 1] for t in PERMGEN)
-            TVALUE4PERMGEN = "".join(str(t - 1) for t in PERMGEN)
-            password = RAND_BEGIN + TVALUE3 + TVALUE4PERMGEN
-
-            credentials = f"admin:{password}"
-            b64_auth = base64.b64encode(credentials.encode()).decode()
-
-            _LOGGER.debug("System login: generated password and B64 auth")
-
-            # Create dedicated session for technical login
-            cookie_jar = aiohttp.CookieJar(quote_cookie=False)
-            connector = aiohttp.TCPConnector(force_close=False)
-
-            technical_cookie = None
-            async with aiohttp.ClientSession(cookie_jar=cookie_jar, connector=connector) as session:
-                tech_login_url = f"{self.base_url}/system/login.cgi?Basic%20{b64_auth}"
-                tech_login2_url = f"{self.base_url}/system/login2.cgi?Basic%20{b64_auth}"
-                data = {"Basic": b64_auth}
-
-                # First technical login call
-                _LOGGER.debug("System login: calling %s", tech_login_url)
-                async with session.post(tech_login_url, data=data, timeout=self.timeout) as response:
-                    if response.status != 200:
-                        _LOGGER.error("Technical login error: status %d", response.status)
-                        return None
-                    _LOGGER.debug("System login: first call OK (status %d)", response.status)
-
-                await asyncio.sleep(1)
-
-                # Second technical login call with timing
-                _LOGGER.debug("System login: calling %s with timing", tech_login2_url)
-
-                for delay in [2, 3, 4, 5, 6, 7]:
-                    await asyncio.sleep(1)
-
-                    async with session.post(tech_login2_url, data=data, timeout=self.timeout) as response:
-                        # Check for session cookie in response
-                        if response.cookies:
-                            for cookie_name, cookie_value in response.cookies.items():
-                                technical_cookie = f"{cookie_name}={cookie_value.value}"
-                                _LOGGER.info("Technical cookie obtained: %s", technical_cookie)
-                                break
-
-                    if technical_cookie:
-                        break
-
-                if not technical_cookie:
-                    _LOGGER.warning("Technical cookie not found, trying anyway")
-
-            # Step 3: Fetch system index page with BOTH cookies
-            index_url = f"{self.base_url}/system/index.html"
-
-            # Build combined cookie string from session
-            if user_cookie and technical_cookie:
-                combined_cookie = f"{user_cookie}; {technical_cookie}"
-            elif user_cookie:
-                combined_cookie = user_cookie
-            elif technical_cookie:
-                combined_cookie = technical_cookie
-            else:
-                combined_cookie = None
-                _LOGGER.warning("No cookies available")
-
-            headers = {}
-            if combined_cookie:
-                headers["Cookie"] = combined_cookie
-
-            _LOGGER.debug("Fetching %s with dual cookie", index_url)
-            _LOGGER.debug("Cookie header: %s", combined_cookie[:200] if combined_cookie else "None")
-
-            # Use user's authenticated session for fetching
-            user_session = self._auth.get_session()
-            if not user_session:
-                _LOGGER.error("No user session available")
-                return None
-
-            async with user_session.get(index_url, headers=headers, timeout=self.timeout,
-                                        allow_redirects=True) as response:
+            async with session.get(url, timeout=self.timeout) as response:
                 if response.status != 200:
-                    _LOGGER.error("Error fetching system page: status %d", response.status)
-                    return None
+                    _LOGGER.warning("Failed to fetch jscript9.js: status %d", response.status)
+                    return
 
-                html = await response.text()
-                _LOGGER.debug("System page HTML (first 500 chars): %s", html[:500])
+                js_content = await response.text()
 
-            # Parse HTML for system information
-            return self._parse_system_info_html(html)
+            # Extract vertype - handles both single and double quotes
+            vertype_match = re.search(r'var\s+vertype\s*=\s*["\']([^"\']+)["\']', js_content)
+            if not vertype_match:
+                _LOGGER.warning("Could not find vertype in jscript9.js")
+                return
+
+            vertype = vertype_match.group(1).strip()
+            _LOGGER.debug("Found vertype: %s", vertype)
+
+            # Extract typWeb - handles both single and double quotes
+            typweb_match = re.search(r'var\s+typWeb\s*=\s*["\']([^"\']+)["\']', js_content)
+            typweb = typweb_match.group(1).strip() if typweb_match else None
+            _LOGGER.debug("Found typWeb: %s", typweb)
+
+            # Apply formatting rules
+            # Rule 1: vertype to uppercase, but fix AMICA/ELISA to title case
+            vertype_upper = vertype.upper()
+
+            # Fix AMICA → Amica, ELISA → Elisa
+            vertype_upper = re.sub(r'\bAMICA\b', 'Amica', vertype_upper)
+            vertype_upper = re.sub(r'\bELISA\b', 'Elisa', vertype_upper)
+
+            # Rule 2: If contains both "LTE" and "GSM", remove "GSM"
+            if "LTE" in vertype_upper and "GSM" in vertype_upper:
+                vertype_upper = vertype_upper.replace("GSM", "").strip()
+
+            # Rule 3: Format typWeb correctly
+            if typweb:
+                typweb_lower = typweb.lower()
+
+                # Handle special cases
+                if "amicaweb" in typweb_lower:
+                    # Amicaweb always becomes "AmicaWeb Plus"
+                    typweb_formatted = "AmicaWeb Plus"
+                elif "smartweb" in typweb_lower:
+                    # Smartweb becomes "SmartWeb"
+                    typweb_formatted = "SmartWeb"
+                else:
+                    # Generic title case for unknown values
+                    typweb_formatted = typweb.title()
+            else:
+                # Default to "AmicaWeb" if not present
+                typweb_formatted = "AmicaWeb"
+
+            # Combine: "VERTYPE + TypWeb"
+            variant = f"{vertype_upper} + {typweb_formatted}"
+
+            # Store in device info
+            if not self._device_info:
+                self._device_info = {}
+
+            self._device_info["variant"] = variant
+            _LOGGER.info("Device variant: %s", variant)
 
         except Exception as e:
-            _LOGGER.error("Error fetching system info: %s", e)
-            return None
-
-    def _parse_system_info_html(self, html: str) -> Optional[Dict[str, Any]]:
-        """
-        Parse system information from HTML page.
-
-        Expected format variants:
-        Variant 1:
-        Centrale:         Amica 64
-        Ver.:         GSM
-        Firmware ver.:         2.2, AmicaWEB
-        Build date:         Aug 28 2013 18:28:19
-        Firmware ver.:         2.5
-        Hardware ver.:         1.0
-        Web Server ver.:         2.5 (27/08/2013)
-
-        Variant 2 (with serial):
-        Centrale:         Amica 64 (S/N: 12345)
-        Ver.:         GSM
-        ...
-
-        Variant 3 (Amicaweb PLUS):
-        Centrale:         Amica 64
-        Ver.:         GSM
-        Firmware ver.:         2.2, Amicaweb PLUS
-        ...
-
-        Returns:
-            Dict with parsed system info
-        """
-        import re
-
-        try:
-            info = {}
-
-            # Extract model name and version (with optional serial number)
-            # Pattern: "Centrale:         Amica 64" or "Centrale:         Amica 64 (S/N: 12345)"
-            model_match = re.search(MODEL_PATTERN, html)
-            ver_match = re.search(VERSION_PATTERN, html)
-
-            if model_match and ver_match:
-                model_text = model_match.group(1).strip()
-                model_version = ver_match.group(1).strip()
-
-                # Extract serial number if present (format: "Amica 64 (S/N: 12345)")
-                serial_match = re.search(SERIAL_NUMBER_PATTERN, model_text)
-                if serial_match:
-                    model_name = serial_match.group(1).strip()
-                    info["serial_number"] = serial_match.group(2).strip()
-                else:
-                    model_name = model_text
-
-                info["model"] = f"{model_name} - {model_version}"
-                info["model_name"] = model_name
-                info["model_version"] = model_version
-            else:
-                _LOGGER.warning("Could not extract model/version from HTML")
-                info["model"] = "Amica"
-                info["model_name"] = "Amica"
-                info["model_version"] = "Unknown"
-
-            # Extract AmicaWEB type and firmware version
-            # Pattern: "Firmware ver.:         2.2, AmicaWEB" or "Firmware ver.:         2.2, Amicaweb PLUS"
-            fw_full_line = re.search(FIRMWARE_FULL_PATTERN, html, re.IGNORECASE)
-
-            if fw_full_line:
-                info["firmware_version"] = fw_full_line.group(1).strip()
-                # Normalize AmicaWEB name
-                amicaweb_type = fw_full_line.group(2).strip()
-                info["amicaweb_type"] = amicaweb_type
-                # Extract version number from AmicaWEB name (e.g., "Amicaweb PLUS 2.5" -> "2.5")
-                amicaweb_ver_match = re.search(AMICAWEB_VERSION_PATTERN, amicaweb_type)
-                info["amicaweb_version"] = amicaweb_ver_match.group(1) if amicaweb_ver_match else "Unknown"
-            else:
-                # Fallback: just extract first firmware version
-                fw_match = re.search(FIRMWARE_FALLBACK_PATTERN, html)
-                if fw_match:
-                    info["firmware_version"] = fw_match.group(1).strip()
-                else:
-                    info["firmware_version"] = "Unknown"
-                info["amicaweb_type"] = "Unknown"
-                info["amicaweb_version"] = "Unknown"
-
-            # Extract build date
-            # Pattern: "Build date:         Aug 28 2013 18:28:19"
-            build_match = re.search(r'Build date:\s+(.+?)(?:\n|$)', html)
-            if build_match:
-                info["build_date"] = build_match.group(1).strip()
-            else:
-                info["build_date"] = "Unknown"
-
-            # Extract web server version
-            # Pattern: "Web Server ver.:         2.5 (27/08/2013)"
-            web_match = re.search(r'Web Server ver\.:\s+(\S+(?:\s+\S+)*)', html)
-            if web_match:
-                info["web_server_version"] = web_match.group(1).strip()
-            else:
-                info["web_server_version"] = "Unknown"
-
-            _LOGGER.info("Parsed system info: model=%s, fw=%s, amicaweb=%s, web=%s, serial=%s",
-                        info.get("model"), info.get("firmware_version"),
-                        info.get("amicaweb_type"), info.get("web_server_version"),
-                        info.get("serial_number", "N/A"))
-
-            return info
-
-        except Exception as e:
-            _LOGGER.error("Error parsing system info HTML: %s", e)
-            return None
+            _LOGGER.warning("Error fetching device info: %s", e)
 
     async def get_anomalies_info(self) -> Optional[int]:
         """

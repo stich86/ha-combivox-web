@@ -41,12 +41,8 @@ async def async_setup_entry(
     # Add system status sensor
     entities.append(CombivoxSystemStatusSensor(coordinator, device_info))
 
-    # Add device info sensors
-    if device_info:
-        entities.append(CombivoxModelSensor(coordinator, device_info))
-        entities.append(CombivoxFirmwareSensor(coordinator, device_info))
-        entities.append(CombivoxWebVersionSensor(coordinator, device_info))
-        entities.append(CombivoxDateTimeSensor(coordinator, device_info))
+    # Add datetime sensor
+    entities.append(CombivoxDateTimeSensor(coordinator, device_info))
 
     # Add GSM sensors
     entities.append(CombivoxGSMStatusSensor(coordinator, device_info))
@@ -107,85 +103,6 @@ class CombivoxSystemStatusSensor(SensorEntity):
     async def async_update(self):
         """Update the entity."""
         await self.coordinator.async_request_refresh()
-
-
-class CombivoxModelSensor(SensorEntity):
-    """Sensor for device model."""
-
-    def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
-        """Initialize the model sensor."""
-        self.coordinator = coordinator
-        self._static_device_info = device_info  # Store static device info
-
-        self._attr_unique_id = "combivox_model"
-        self._attr_has_entity_name = True
-        self._attr_device_info = device_info
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_translation_key = "combivox_model"
-
-    @property
-    def native_value(self) -> str:
-        """Return the device model."""
-        # Get model from static device info (parsed from /system/index.html during setup)
-        return self._static_device_info.get("model", "Unknown")
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return not self.coordinator._panel_unavailable
-
-
-class CombivoxFirmwareSensor(SensorEntity):
-    """Sensor for device firmware version."""
-
-    def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
-        """Initialize the firmware sensor."""
-        self.coordinator = coordinator
-
-        self._attr_unique_id = "combivox_firmware"
-        self._attr_has_entity_name = True
-        self._attr_device_info = device_info
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_translation_key = "combivox_firmware"
-
-    @property
-    def native_value(self) -> str:
-        """Return the device firmware version."""
-        # TODO: Parse from /system/index.html
-        # For now return a placeholder
-        return "Unknown (TODO: parse from /system/index.html)"
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return not self.coordinator._panel_unavailable
-
-
-class CombivoxWebVersionSensor(SensorEntity):
-    """Sensor for Web interface version."""
-
-    def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
-        """Initialize the web version sensor."""
-        self.coordinator = coordinator
-
-        self._attr_unique_id = "combivox_web_version"
-        self._attr_has_entity_name = True
-        self._attr_device_info = device_info
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_icon = "mdi:web"
-        self._attr_translation_key = "combivox_web_version"
-
-    @property
-    def native_value(self) -> str:
-        """Return the web interface version."""
-        # TODO: Parse from /system/index.html
-        # For now return a placeholder
-        return "Unknown (TODO: parse from /system/index.html)"
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return not self.coordinator._panel_unavailable
 
 
 class CombivoxDateTimeSensor(SensorEntity):

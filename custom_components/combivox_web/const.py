@@ -28,14 +28,6 @@ DEFAULT_SCAN_INTERVAL = 5
 # Authentication permutations
 PERMMANUAL = [2, 7, 6, 1, 4, 5, 8, 3]
 
-# Regex patterns for system info parsing
-MODEL_PATTERN = r'Centrale:\s+(\S+(?:\s+\S+)*)'
-VERSION_PATTERN = r'Ver\.:\s+(\S+(?:\s+\S+)*)'
-SERIAL_NUMBER_PATTERN = r'(.*?)\s*\(\s*S/N:\s*(.+?)\s*\)'
-FIRMWARE_FULL_PATTERN = r'Firmware ver\.:\s+([^,\n]+),\s*(Amicaweb\s*(?:PLUS)?(?:\s*\([^)]+\))?)'
-FIRMWARE_FALLBACK_PATTERN = r'Firmware ver\.:\s+(\S+)'
-AMICAWEB_VERSION_PATTERN = r'(\d+(?:\.\d+)?)'
-
 # Macro execution response code
 MACRO_SUCCESS_CODE = 31  # 0x31 = success
 
@@ -71,6 +63,7 @@ ANOMALIES_HEX_TO_HA_STATE = {
 
 # XML endpoints
 STATUS_URL = "/status9.xml"
+JSCRIPT9_URL = "/jscript9.js"
 LABELZONE_URL = "/labelZone16.xml"
 LABELAREA_URL = "/labelAree.xml"
 LOGIN_URL = "/login.cgi"

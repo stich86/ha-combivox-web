@@ -134,11 +134,7 @@ async def async_get_config_entry_diagnostics(
         device_info = client.get_device_info()
         if device_info:
             diagnostic_data["device"] = {
-                "model": device_info.get("model"),
-                "firmware_version": device_info.get("firmware_version"),
-                "amicaweb_type": device_info.get("amicaweb_type"),
-                "web_server_version": device_info.get("web_server_version"),
-                "serial_number": device_info.get("serial_number"),
+                "variant": device_info.get("variant"),
             }
 
         # Fetch active anomaly and add to anomalies section

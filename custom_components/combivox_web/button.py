@@ -223,7 +223,7 @@ class CombivoxClearAlarmMemoryButton(ButtonEntity):
         self._attr_unique_id = "combivox_clear_alarm_memory"
         self._attr_has_entity_name = True
         self._attr_device_info = device_info
-        self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:delete-forever"
         self._attr_translation_key = "clear_alarm_memory"
 

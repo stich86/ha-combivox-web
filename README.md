@@ -1,4 +1,4 @@
-# Combivox Amica Web Integration for Home Assistant
+# Combivox AmicaWeb\SmartWeb Integration for Home Assistant
 
 Home Assistant integration for Combivox alarm panels (Amica/Elisa) via AmicaWeb/AmicaWeb Plus/SmartWeb HTTP/XML interface.
 

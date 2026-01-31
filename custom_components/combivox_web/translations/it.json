@@ -86,15 +86,6 @@
           "unknown": "Sconosciuto"
         }
       },
-      "combivox_model": {
-        "name": "Modello"
-      },
-      "combivox_firmware": {
-        "name": "Firmware"
-      },
-      "combivox_web_version": {
-        "name": "Versione Web"
-      },
       "combivox_datetime": {
         "name": "Data/Ora"
       },
@@ -120,6 +111,20 @@
       },
       "combivox_gsm_signal": {
         "name": "Segnale GSM"
+      },
+      "combivox_anomalies": {
+        "name": "Anomalie",
+        "state": {
+          "ok": "OK",
+          "gsm_trouble": "Anomalia GSM",
+          "bus_trouble": "Anomalia Bus",
+          "unknown": "Sconosciuto"
+        }
+      }
+    },
+    "button": {
+      "clear_alarm_memory": {
+        "name": "Cancella Memoria Allarmi"
       }
     }
   },
