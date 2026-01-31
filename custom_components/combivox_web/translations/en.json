@@ -71,6 +71,11 @@
     }
   },
   "entity": {
+    "alarm_control_panel": {
+      "combivox_alarm_panel": {
+        "name": "Alarm Panel"
+      }
+    },
     "sensor": {
       "combivox_system_status": {
         "name": "System Status",

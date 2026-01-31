@@ -139,7 +139,7 @@ class CombivoxAlarmControlPanel(AlarmControlPanelEntity):
         self.arm_mode_night = arm_mode_night
 
         self._attr_unique_id = "combivox_alarm_panel"
-        self._attr_name = "Combivox Alarm"
+        self._attr_translation_key = "combivox_alarm_panel"
         self._attr_device_info = device_info
         self._attr_code_format = CodeFormat.NUMBER
         self._attr_supported_features = (
