@@ -44,6 +44,25 @@ ARM_MODE_NORMAL = "normal"
 ARM_MODE_IMMEDIATE = "immediate"
 ARM_MODE_FORCED = "forced"
 
+# GSM Operator hex to name mapping (translatable)
+GSM_OPERATOR_HEX_TO_NAME = {
+    "00": "other",
+    "01": "vodafone",
+    "02": "tim",
+    "03": "wind",
+    "04": "combivox",
+    "FF": "unknown"
+}
+
+# GSM Status hex to HA state mapping (translatable)
+GSM_STATUS_HEX_TO_HA_STATE = {
+    "05": "no_sim",
+    "04": "searching",
+    "18": "ok",
+    "08": "ok",
+    "00": "ok"
+}
+
 # XML endpoints
 STATUS_URL = "/status9.xml"
 LABELZONE_URL = "/labelZone16.xml"

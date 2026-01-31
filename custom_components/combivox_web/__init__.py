@@ -460,4 +460,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         if not hass.data.get(DOMAIN):
             del hass.data[DOMAIN]
 
+        # Clean up entity registry - remove all entities for this integration
+        from homeassistant.helpers import entity_registry as er
+        entity_reg = er.async_get(hass)
+        entity_reg.async_clear_config_entry(entry)
+
+        _LOGGER.info("Cleared all entities from registry for config entry %s", entry.entry_id)
+
     return unload_ok

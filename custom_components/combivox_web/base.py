@@ -931,11 +931,12 @@ class CombivoxWebClient:
             sw_version = "Unknown"
 
         # Build device info dictionary
+        # Use a simple identifier without IP:PORT to avoid name changes
         info = {
-            "identifiers": {(("combivox_web", f"{self.ip_address}:{self.port}"))},
-            "name": f"Combivox {device_info.get('model', 'Amica 64 GSM')}",
+            "identifiers": {("combivox_web", f"alarm_{self.ip_address.replace('.', '_')}")},
+            "name": "Combivox Alarm",
             "manufacturer": "Combivox",
-            "model": device_info.get('model', 'Amica 64 GSM'),
+            "model": device_info.get('model', 'Amica'),
             "sw_version": sw_version,
             "configuration_url": f"{self.base_url}/system"
         }
@@ -1134,9 +1135,9 @@ class CombivoxWebClient:
                 info["model_version"] = model_version
             else:
                 _LOGGER.warning("Could not extract model/version from HTML")
-                info["model"] = "Amica 64 GSM"
-                info["model_name"] = "Amica 64"
-                info["model_version"] = "GSM"
+                info["model"] = "Amica"
+                info["model_name"] = "Amica"
+                info["model_version"] = "Unknown"
 
             # Extract AmicaWEB type and firmware version
             # Pattern: "Firmware ver.:         2.2, AmicaWEB" or "Firmware ver.:         2.2, Amicaweb PLUS"

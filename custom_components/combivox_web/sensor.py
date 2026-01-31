@@ -10,7 +10,11 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .base import CombivoxWebClient
-from .const import DOMAIN, DATA_COORDINATOR, DATA_CONFIG
+from .const import (
+    DOMAIN, DATA_COORDINATOR, DATA_CONFIG,
+    GSM_STATUS_HEX_TO_HA_STATE,
+    GSM_OPERATOR_HEX_TO_NAME
+)
 from .coordinator import CombivoxDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,6 +47,11 @@ async def async_setup_entry(
         entities.append(CombivoxWebVersionSensor(coordinator, device_info))
         entities.append(CombivoxDateTimeSensor(coordinator, device_info))
 
+    # Add GSM sensors
+    entities.append(CombivoxGSMStatusSensor(coordinator, device_info))
+    entities.append(CombivoxGSMOperatorSensor(coordinator, device_info))
+    entities.append(CombivoxGSMSignalSensor(coordinator, device_info))
+
     _LOGGER.info("Adding %d system sensors", len(entities))
 
     async_add_entities(entities, update_before_add=True)
@@ -56,7 +65,6 @@ class CombivoxSystemStatusSensor(SensorEntity):
         self.coordinator = coordinator
 
         self._attr_unique_id = "combivox_system_status"
-        self._attr_name = "System Status"
         self._attr_has_entity_name = True
         self._attr_device_info = device_info
         self._attr_device_class = SensorDeviceClass.ENUM
@@ -71,6 +79,7 @@ class CombivoxSystemStatusSensor(SensorEntity):
             "triggered_gsm_excluded",
             "unknown"
         ]
+        self._attr_translation_key = "combivox_system_status"
 
     @property
     def native_value(self) -> str:
@@ -102,18 +111,19 @@ class CombivoxModelSensor(SensorEntity):
     def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
         """Initialize the model sensor."""
         self.coordinator = coordinator
+        self._static_device_info = device_info  # Store static device info
 
         self._attr_unique_id = "combivox_model"
-        self._attr_name = "Model"
         self._attr_has_entity_name = True
         self._attr_device_info = device_info
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_translation_key = "combivox_model"
 
     @property
     def native_value(self) -> str:
         """Return the device model."""
-        # Return a static value since we don't have dynamic model info
-        return "Amica 64 GSM"
+        # Get model from static device info (parsed from /system/index.html during setup)
+        return self._static_device_info.get("model", "Unknown")
 
     @property
     def available(self) -> bool:
@@ -129,10 +139,10 @@ class CombivoxFirmwareSensor(SensorEntity):
         self.coordinator = coordinator
 
         self._attr_unique_id = "combivox_firmware"
-        self._attr_name = "Firmware"
         self._attr_has_entity_name = True
         self._attr_device_info = device_info
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_translation_key = "combivox_firmware"
 
     @property
     def native_value(self) -> str:
@@ -155,11 +165,11 @@ class CombivoxWebVersionSensor(SensorEntity):
         self.coordinator = coordinator
 
         self._attr_unique_id = "combivox_web_version"
-        self._attr_name = "Web Version"
         self._attr_has_entity_name = True
         self._attr_device_info = device_info
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:web"
+        self._attr_translation_key = "combivox_web_version"
 
     @property
     def native_value(self) -> str:
@@ -182,12 +192,12 @@ class CombivoxDateTimeSensor(SensorEntity):
         self.coordinator = coordinator
 
         self._attr_unique_id = "combivox_datetime"
-        self._attr_name = "Date/Time"
         self._attr_has_entity_name = True
         self._attr_device_info = device_info
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         # No device class - we'll show formatted string
         self._attr_icon = "mdi:clock"
+        self._attr_translation_key = "combivox_datetime"
 
     @property
     def native_value(self) -> str | None:
@@ -207,6 +217,129 @@ class CombivoxDateTimeSensor(SensorEntity):
 
         # Otherwise return the value as is (already string?)
         return str(dt) if dt else None
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return not self.coordinator._panel_unavailable
+
+
+class CombivoxGSMStatusSensor(SensorEntity):
+    """Sensor for GSM status."""
+
+    def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
+        """Initialize the GSM status sensor."""
+        self.coordinator = coordinator
+
+        self._attr_unique_id = "combivox_gsm_status"
+        self._attr_has_entity_name = True
+        self._attr_device_info = device_info
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_icon = "mdi:sim"
+        self._attr_translation_key = "combivox_gsm_status"
+
+    @property
+    def native_value(self) -> str:
+        """Return the GSM status."""
+        system_data = self.coordinator.data or {}
+        gsm_data = system_data.get("gsm", {})
+
+        if not gsm_data:
+            return "unknown"
+
+        status_hex = gsm_data.get("status_hex", "").upper()
+        return GSM_STATUS_HEX_TO_HA_STATE.get(status_hex, "unknown")
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Return additional state attributes."""
+        system_data = self.coordinator.data or {}
+        gsm_data = system_data.get("gsm", {})
+        return {
+            "status_hex": gsm_data.get("status_hex", "")
+        }
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return not self.coordinator._panel_unavailable
+
+
+class CombivoxGSMOperatorSensor(SensorEntity):
+    """Sensor for GSM operator."""
+
+    def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
+        """Initialize the GSM operator sensor."""
+        self.coordinator = coordinator
+
+        self._attr_unique_id = "combivox_gsm_operator"
+        self._attr_has_entity_name = True
+        self._attr_device_info = device_info
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_icon = "mdi:signal"
+        self._attr_translation_key = "combivox_gsm_operator"
+
+    @property
+    def native_value(self) -> str:
+        """Return the GSM operator."""
+        system_data = self.coordinator.data or {}
+        gsm_data = system_data.get("gsm", {})
+
+        if not gsm_data:
+            return "unknown"
+
+        operator_hex = gsm_data.get("operator_hex", "").upper()
+        return GSM_OPERATOR_HEX_TO_NAME.get(operator_hex, "unknown")
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Return additional state attributes."""
+        system_data = self.coordinator.data or {}
+        gsm_data = system_data.get("gsm", {})
+        return {
+            "operator_hex": gsm_data.get("operator_hex", "")
+        }
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return not self.coordinator._panel_unavailable
+
+
+class CombivoxGSMSignalSensor(SensorEntity):
+    """Sensor for GSM signal strength."""
+
+    def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
+        """Initialize the GSM signal sensor."""
+        self.coordinator = coordinator
+
+        self._attr_unique_id = "combivox_gsm_signal"
+        self._attr_has_entity_name = True
+        self._attr_device_info = device_info
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_native_unit_of_measurement = "%"
+        self._attr_icon = "mdi:signal"
+        self._attr_translation_key = "combivox_gsm_signal"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the GSM signal strength in percentage."""
+        system_data = self.coordinator.data or {}
+        gsm_data = system_data.get("gsm", {})
+
+        if not gsm_data:
+            return None
+
+        return gsm_data.get("signal_percent")
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Return additional state attributes."""
+        system_data = self.coordinator.data or {}
+        gsm_data = system_data.get("gsm", {})
+        return {
+            "signal_bars": gsm_data.get("signal_bars", 0)
+        }
 
     @property
     def available(self) -> bool:

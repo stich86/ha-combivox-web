@@ -73,17 +73,53 @@
   "entity": {
     "sensor": {
       "combivox_system_status": {
+        "name": "System Status",
         "state": {
-          "disarmed": "Disarmed",
+          "disarmed": "Ready",
           "armed": "Armed",
-          "disarmed_gsm_excluded": "Disarmed (GSM excluded)",
+          "disarmed_gsm_excluded": "Ready (GSM excluded)",
           "arming": "Arming",
           "armed_with_delay": "Armed with delay",
           "pending": "Pending",
-          "triggered": "Triggered",
-          "triggered_gsm_excluded": "Triggered (GSM excluded)",
+          "triggered": "In Alarm",
+          "triggered_gsm_excluded": "In Alarm (GSM excluded)",
           "unknown": "Unknown"
         }
+      },
+      "combivox_model": {
+        "name": "Model"
+      },
+      "combivox_firmware": {
+        "name": "Firmware"
+      },
+      "combivox_web_version": {
+        "name": "Web Version"
+      },
+      "combivox_datetime": {
+        "name": "Date/Time"
+      },
+      "combivox_gsm_status": {
+        "name": "GSM Status",
+        "state": {
+          "ok": "OK",
+          "searching": "Searching",
+          "no_sim": "No SIM",
+          "unknown": "Unknown"
+        }
+      },
+      "combivox_gsm_operator": {
+        "name": "GSM Operator",
+        "state": {
+          "other": "Other",
+          "vodafone": "Vodafone",
+          "tim": "TIM",
+          "wind": "Wind",
+          "combivox": "Combivox",
+          "unknown": "Unknown"
+        }
+      },
+      "combivox_gsm_signal": {
+        "name": "GSM Signal"
       }
     }
   },
@@ -93,7 +129,7 @@
       "armed_home": "armed home",
       "armed_night": "armed night",
       "armed_custom_bypass": "armed custom bypass",
-      "disarmed": "disarmed",
+      "disarmed": "ready",
       "arming": "arming",
       "pending": "pending",
       "triggered": "triggered"

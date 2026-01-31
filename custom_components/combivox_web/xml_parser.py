@@ -257,8 +257,40 @@ class CombivoxXMLParser:
                 _LOGGER.error("Valid FFFFFF marker not found (looking for FFFFFF followed by 0000 or 0101)")
                 return {}
 
-            # NOTE: GSM parsing removed - not implemented
-            gsm_status = None
+            # Parse GSM data from bytes 3, 6, 7 (0-indexed, after skipping first 2 bytes)
+            # Byte 2 (3°): Signal strength (0-5 bars)
+            # Byte 5 (6°): Operator code
+            # Byte 6 (7°): Status code
+            gsm_data = {}
+            if len(si) >= 16:  # Need at least 8 bytes (16 hex characters)
+                try:
+                    # Skip first 2 bytes (4 characters), then extract:
+                    signal_hex = si[4:6]        # Byte 2 (position 4-5)
+                    operator_hex = si[10:12]    # Byte 5 (position 10-11)
+                    status_hex = si[12:14]      # Byte 6 (position 12-13)
+
+                    # Parse signal (0-5 bars to percentage: linear 0-100%)
+                    signal_bars = int(signal_hex, 16)
+                    if 0 <= signal_bars <= 5:
+                        signal_percent = signal_bars * 20  # 0→0%, 1→20%, ..., 5→100%
+                    else:
+                        signal_bars = 0
+                        signal_percent = 0
+
+                    gsm_data = {
+                        "signal_bars": signal_bars,
+                        "signal_percent": signal_percent,
+                        "operator_hex": operator_hex,
+                        "status_hex": status_hex
+                    }
+                    _LOGGER.debug("GSM data: signal=%d bars (%d%%), operator=%s, status=%s",
+                                 signal_bars, signal_percent, operator_hex, status_hex)
+                except (ValueError, IndexError) as e:
+                    _LOGGER.warning("Failed to parse GSM data: %s", e)
+                    gsm_data = {}
+            else:
+                _LOGGER.debug("Buffer too short for GSM parsing (len=%d)", len(si))
+                gsm_data = {}
 
             # Extract areas hex state
             # CORRECT STRUCTURE (based on user analysis):
@@ -432,7 +464,7 @@ class CombivoxXMLParser:
 
             return {
                 "datetime": datetime_obj,
-                "gsm": gsm_status,
+                "gsm": gsm_data,
                 "status_hex": status_hex,
                 "state": state,
                 "armed_areas": armed_areas,

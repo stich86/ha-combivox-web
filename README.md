@@ -10,7 +10,7 @@ Home Assistant integration for Combivox alarm panels (Amica/Elisa) via AmicaWeb/
 - **Alarm Control Panel**: Arm Away/Home/Night and Disarm with configurable modes
 - **Zone Bypass Buttons**: Toggle zone inclusion/exclusion
 - **Macro/Scenario Buttons**: Execute panel macros and scenarios
-- **System Sensors**: Device model, IP address, alarm state, date/time
+- **System Sensors**: Device model, IP address, alarm state, date/time, gsm status
 - **Label Caching**: Saves zone/area names to JSON file for fast loading
 - **Smart Polling**: Single unified coordinator for efficient updates
 - **Automatic Recovery**: Handles temporary network issues and session expiration with automatic retry
@@ -63,10 +63,10 @@ After initial setup, you can configure:
 - **Technician Code**: Technician code (optional)
 
 #### Area Configuration
-- **Areas for Away Mode**: Multi-select of area IDs for away arming
-- **Areas for Home Mode**: Multi-select of area IDs for home arming
-- **Areas for Night Mode**: Multi-select of area IDs for night arming
-- **Areas for Disarm Mode**: Multi-select of area IDs for selective disarming
+- **Areas for Away Mode**: Multi-select of area names for away arming
+- **Areas for Home Mode**: Multi-select of area names for home arming
+- **Areas for Night Mode**: Multi-select of area names for night arming
+- **Areas for Disarm Mode**: Multi-select of area names for selective disarming
 
 #### Disarm Behavior
 
@@ -193,7 +193,6 @@ logger:
 - Verify the alarm panel IP address is correct
 - Check that Home Assistant can reach the panel (ping test from HA host)
 - Ensure HTTP port is correct (default: 80, but may vary)
-- Check firewall rules
 - Verify the panel's web interface is accessible from a browser
 
 ### "Invalid authentication" Error
