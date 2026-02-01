@@ -162,10 +162,10 @@ AFTER the marker (going forward from FFFFFF):
 | Value | Operator | Description |
 |-------|----------|-------------|
 | `00` | Other | Alternative operator |
-| `01` | Vodafone | Vodafone network |
+| `01` | Vodafone | Vodafone  |
 | `02` | TIM | Telecom Italia Mobile |
-| `03` | WIND | WIND / WINDTRE |
-| `04` | Combivox | Combivox operator |
+| `03` | WIND | WIND / VERY |
+| `04` | Combivox | Combivox (MVNO?) |
 | `FF` | Unknown | Not detected / invalid |
 
 ### GSM Status Codes (Byte 6)
@@ -304,15 +304,15 @@ The 16 bytes contain the operator name (e.g., "Vodafone", "TIM", "WIND") encoded
 
 ### Network Loss Detection
 
-When network connection is lost:
+When there is a power loss (to be confirmed):
 
 **Byte 212** (hex position 424):
 - `00` → `01` (00000000 → 00000001)
-- Indicates network absence
+- Indicates power absence
 
 **Byte 205** (hex position 410):
 - `00` → `40` (00000000 → 01000000)
-- Indicates searching for network (with SIM inserted)
+- Indicates GSM anomalies
 
 ## Implementation Notes
 
