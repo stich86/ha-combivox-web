@@ -139,6 +139,121 @@ For each macro with a configured name:
   - **Icon**: `mdi:play-box-outline`
   - **Category**: Config
 
+## Services
+
+The integration provides the following services that can be called via **Developer Tools** → **Services** or used in automations:
+
+### `combivox_web.arm_areas`
+
+Arm specific areas of the alarm panel.
+
+**Fields:**
+- `areas` (required): List of area IDs (1-8)
+  - Example: `[1, 2, 3]`
+- `arm_mode` (optional): Arm mode - `normal`, `immediate`, or `forced` (default: `normal`)
+  - **Normal**: Arming with exit delay (standard mode)
+  - **Immediate**: Arming without exit delay
+  - **Forced**: Bypass open zones and arm anyway with delay
+
+**Examples:**
+
+Arm areas 1 and 2 with normal mode:
+```yaml
+service: combivox_web.arm_areas
+data:
+  areas: [1, 2]
+  arm_mode: normal
+```
+
+Arm areas with forced mode:
+```yaml
+service: combivox_web.arm_areas
+data:
+  areas: [1, 3, 5]
+  arm_mode: forced
+```
+
+### `combivox_web.disarm_areas`
+
+Disarm specific areas of the alarm panel.
+
+**Fields:**
+- `areas` (optional): List of area IDs (1-8) to disarm
+  - Default: `[1, 2, 3, 4, 5, 6, 7, 8]` (all areas)
+  - Example: `[3, 4]` to disarm only areas 3 and 4
+
+**Examples:**
+
+Disarm all areas (default):
+```yaml
+service: combivox_web.disarm_areas
+```
+
+Disarm specific areas:
+```yaml
+service: combivox_web.disarm_areas
+data:
+  areas: [1, 2, 3]
+```
+
+### `combivox_web.reload_configuration`
+
+Reload zones, areas, and macros/scenarios configuration from the alarm panel.
+
+**Use cases:**
+- After adding/removing zones in the panel
+- After adding/removing macros/scenarios in the panel
+- To refresh the cached configuration
+
+**What it does:**
+1. Re-downloads configuration from the panel (zones, areas, macros)
+2. Compares with previous configuration
+3. If changes are detected → automatically reloads the integration
+   - **Home Assistant removes orphaned entities** (zones/scenarios that no longer exist)
+   - **Home Assistant creates new entities** (new zones/scenarios)
+4. If no changes → simply refreshes entity states
+
+**No parameters required.**
+
+**Example:**
+```yaml
+service: combivox_web.reload_configuration
+```
+
+### `combivox_web.get_areas_mapping`
+
+Get the mapping of area IDs to area names from the panel configuration.
+
+**Use cases:**
+- Find out which area ID corresponds to which area name
+- Use in scripts to dynamically reference areas by name
+- Debug area configuration
+
+**What it returns:**
+A JSON object with area IDs as keys and area names as values.
+
+**Example:**
+```yaml
+service: combivox_web.get_areas_mapping
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "areas": {
+    "1": "Piano Terra",
+    "2": "Primo Piano",
+    "3": "Garage",
+    "4": "Esterno"
+  }
+}
+```
+
+This way you can see that area ID 1 is "Piano Terra", ID 2 is "Primo Piano", etc.
+
+**No parameters required.**
+
 ## Alarm States
 
 The panel supports the following alarm states (still working in progress to understand other states):

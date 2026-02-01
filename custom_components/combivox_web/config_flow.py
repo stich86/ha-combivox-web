@@ -22,7 +22,6 @@ from .const import (
     CONF_IP_ADDRESS,
     CONF_CODE,
     CONF_PORT,
-    CONF_TECH_CODE,
     CONF_AREAS_AWAY,
     CONF_AREAS_HOME,
     CONF_AREAS_NIGHT,
@@ -64,7 +63,6 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_IP_ADDRESS, default="192.168.1.25"): str,
         vol.Required(CONF_PORT, default=80): int,
         vol.Required(CONF_CODE, default="123456"): str,
-        vol.Required(CONF_TECH_CODE, default="111111"): str,
     }
 )
 
@@ -155,15 +153,10 @@ class CombivoxOptionsFlowHandler(config_entries.OptionsFlow):
 
             # Pad codes to 6 digits if less than 6 characters (panel expects 6 digits)
             user_code = user_input.get(CONF_CODE, "")
-            tech_code = user_input.get(CONF_TECH_CODE, "")
 
             if user_code and len(user_code) < 6:
                 user_code = user_code.ljust(6, '0')
                 _LOGGER.debug("User code padded to 6 digits: %s", user_code)
-
-            if tech_code and len(tech_code) < 6:
-                tech_code = tech_code.ljust(6, '0')
-                _LOGGER.debug("Technical code padded to 6 digits: %s", tech_code)
 
             # Get arm_mode values - always present since we use vol.Required() with defaults
             arm_mode_away = user_input.get(CONF_ARM_MODE_AWAY, ARM_MODE_NORMAL)
@@ -175,7 +168,6 @@ class CombivoxOptionsFlowHandler(config_entries.OptionsFlow):
 
             result = {
                 CONF_CODE: user_code,
-                CONF_TECH_CODE: tech_code,
                 CONF_SCAN_INTERVAL: user_input.get(CONF_SCAN_INTERVAL),
                 CONF_AREAS_AWAY: areas_away,
                 CONF_AREAS_HOME: areas_home,
@@ -279,15 +271,11 @@ class CombivoxOptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_CODE,
                 default=data.get(CONF_CODE, ""),
             ): str,
-            vol.Optional(
-                CONF_TECH_CODE,
-                default=data.get(CONF_TECH_CODE, ""),
-            ): str,
             # Scan interval
             vol.Optional(
                 CONF_SCAN_INTERVAL,
                 default=options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=300)),            
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=300)),
             # AWAY MODE: Scenario → Areas → Arm Mode
             vol.Optional(
                 CONF_MACRO_AWAY,

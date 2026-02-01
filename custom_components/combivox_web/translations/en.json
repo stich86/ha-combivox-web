@@ -7,8 +7,7 @@
         "data": {
           "ip_address": "IP Address",
           "port": "Port",
-          "code": "Master PIN Code",
-          "tech_code": "Technical PIN Code"
+          "code": "Master PIN Code"
         }
       }
     },
@@ -28,7 +27,6 @@
         "description": "Configure PIN codes, scenarios and arm modes.",
         "data": {
           "code": "Master PIN Code",
-          "tech_code": "Technical PIN Code",
           "macro_away": "Scenario for Away",
           "areas_away": "Areas for Away Mode",
           "arm_mode_away": "Arm Mode - Away",
@@ -44,7 +42,6 @@
         },
         "data_description": {
           "code": "Master PIN code for arm/disarm operations",
-          "tech_code": "Technical PIN code for advanced operations",
           "macro_away": "Select a scenario to activate when arming away, or leave empty to use areas instead (if both are configured, areas have priority)",
           "areas_away": "Select areas to arm when arming away",
           "arm_mode_away": "Select arming mode for away (normal with exit delay, immediate, or forced bypassing open zones)",
@@ -138,6 +135,32 @@
       "arming": "arming",
       "pending": "pending",
       "triggered": "triggered"
+    }
+  },
+  "services": {
+    "arm_areas": {
+      "name": "Arm Areas",
+      "description": "Arm specific areas of the alarm panel",
+      "fields": {
+        "areas": {
+          "name": "Areas",
+          "description": "Select areas to arm"
+        },
+        "arm_mode": {
+          "name": "Arm mode",
+          "description": "Select arm mode"
+        }
+      }
+    },
+    "disarm_areas": {
+      "name": "Disarm Areas",
+      "description": "Disarm specific areas of the alarm panel",
+      "fields": {
+        "areas": {
+          "name": "Areas",
+          "description": "Select areas to disarm (default: all areas)"
+        }
+      }
     }
   }
 }

@@ -41,8 +41,7 @@ class CombivoxWebClient:
         code: str,
         port: int = 80,
         config_file_path: Optional[str] = None,
-        timeout: int = 10,
-        tech_code: Optional[str] = None
+        timeout: int = 10
     ):
         """
         Initialize the client.
@@ -53,13 +52,11 @@ class CombivoxWebClient:
             port: HTTP port
             config_file_path: JSON config file path
             timeout: HTTP request timeout
-            tech_code: Technical code for system info access
         """
         self.ip_address = ip_address
         self.code = code
         self.port = port
         self.timeout = timeout
-        self.tech_code = tech_code or "000000"
         self.base_url = f"http://{ip_address}:{port}"
 
         # Config file path
@@ -121,6 +118,77 @@ class CombivoxWebClient:
             _LOGGER.error("Connection failed: %s", e)
             # Even on exception, check if we have cached config
             return self.is_config_loaded()
+
+    async def reload_configuration(self) -> bool:
+        """
+        Force reload configuration from panel (zones, areas, macros).
+
+        This method re-downloads the configuration from the panel and compares
+        with the previous configuration to detect changes.
+        IMPORTANT: Does NOT break existing authentication - reuses the session.
+
+        Returns:
+            True if configuration changed (reload needed), False otherwise
+        """
+        _LOGGER.info("Reloading configuration from panel (reusing existing session)")
+
+        # Store previous config for comparison
+        prev_zones_count = len(self._zones_config) if self._zones_config else 0
+        prev_macros_count = len(self._macros_config) if self._macros_config else 0
+        prev_zone_ids = set(self._zone_ids) if self._zone_ids else set()
+        prev_macro_ids = set(m.get("id") for m in self._macros_config) if self._macros_config else set()
+
+        # Re-download configuration using existing session (don't reauthenticate)
+        try:
+            # Download zones and areas (uses existing session)
+            prog_state = await self._download_prog_state_config()
+            if prog_state:
+                new_zones = prog_state.get("zones", [])
+                new_areas = prog_state.get("areas", [])
+                self._zones_config = new_zones
+                self._zone_ids = [z["zone_id"] for z in new_zones]
+                self._areas_config = new_areas
+                self._area_name_map = {area["area_id"]: area["area_name"] for area in new_areas}
+            else:
+                _LOGGER.warning("Failed to download zones/areas config during reload")
+                return False
+
+            # Download macros (uses existing session)
+            macros_config = await self._download_macros_config()
+            if macros_config:
+                self._macros_config = macros_config
+            else:
+                _LOGGER.warning("Failed to download macros config during reload")
+
+            # Save to file
+            if self._config_file_path:
+                await self._save_config_to_file()
+
+            # Compare configurations
+            new_zones_count = len(self._zones_config) if self._zones_config else 0
+            new_macros_count = len(self._macros_config) if self._macros_config else 0
+            new_zone_ids = set(self._zone_ids) if self._zone_ids else set()
+            new_macro_ids = set(m.get("id") for m in self._macros_config) if self._macros_config else set()
+
+            # Check for changes
+            zones_changed = (prev_zones_count != new_zones_count or
+                            prev_zone_ids != new_zone_ids)
+            macros_changed = (prev_macros_count != new_macros_count or
+                             prev_macro_ids != new_macro_ids)
+
+            if zones_changed or macros_changed:
+                _LOGGER.info("Configuration changed - zones: %d→%d, macros: %d→%d",
+                           prev_zones_count, new_zones_count,
+                           prev_macros_count, new_macros_count)
+                return True
+            else:
+                _LOGGER.info("Configuration unchanged - zones: %d, macros: %d",
+                           new_zones_count, new_macros_count)
+                return False
+
+        except Exception as e:
+            _LOGGER.error("Error reloading configuration: %s", e)
+            return False
 
     async def _authenticate_and_download_config(self) -> bool:
         """
@@ -955,6 +1023,10 @@ class CombivoxWebClient:
         """Return the device info."""
         return self._device_info
 
+    def get_config_file_path(self) -> Optional[str]:
+        """Return the cached config file path."""
+        return self._config_file_path
+
     def get_device_info_for_ha(self) -> Dict[str, Any]:
         """Return device info formatted for Home Assistant."""
         # Get variant from device info (fetched from jscript9.js)
@@ -992,10 +1064,16 @@ class CombivoxWebClient:
                 _LOGGER.warning("No session available for device info fetch")
                 return
 
+            # Build headers with cookie (same as labelProgStato.xml and other requests)
+            headers = {}
+            cookie = self._auth.get_cookie()
+            if cookie:
+                headers["Cookie"] = cookie
+
             url = f"{self.base_url}{JSCRIPT9_URL}"
             _LOGGER.debug("Fetching device info from %s", url)
 
-            async with session.get(url, timeout=self.timeout) as response:
+            async with session.get(url, headers=headers, timeout=self.timeout) as response:
                 if response.status != 200:
                     _LOGGER.warning("Failed to fetch jscript9.js: status %d", response.status)
                     return
@@ -1006,6 +1084,7 @@ class CombivoxWebClient:
             vertype_match = re.search(r'var\s+vertype\s*=\s*["\']([^"\']+)["\']', js_content)
             if not vertype_match:
                 _LOGGER.warning("Could not find vertype in jscript9.js")
+                _LOGGER.debug("Content length: %d bytes, first 200 chars: %s", len(js_content), js_content[:200])
                 return
 
             vertype = vertype_match.group(1).strip()

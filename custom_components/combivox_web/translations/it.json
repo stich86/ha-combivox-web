@@ -7,8 +7,7 @@
         "data": {
           "ip_address": "Indirizzo IP",
           "port": "Porta",
-          "code": "Codice PIN Master",
-          "tech_code": "Codice PIN Tecnico"
+          "code": "Codice PIN Master"
         }
       }
     },
@@ -28,7 +27,6 @@
         "description": "Configura codici PIN, scenari e modalità di armamento.",
         "data": {
           "code": "Codice PIN Master",
-          "tech_code": "Codice PIN Tecnico",
           "macro_away": "Scenario per Away",
           "areas_away": "Aree per Modalità Away",
           "arm_mode_away": "Modalità Armamento - Away",
@@ -44,7 +42,6 @@
         },
         "data_description": {
           "code": "Codice PIN master per operazioni di inserimento/disinserimento",
-          "tech_code": "Codice PIN tecnico per operazioni avanzate",
           "macro_away": "Seleziona uno scenario da attivare durante l'inserimento away, oppure lascia vuoto per usare le aree (se entrambi sono configurati, le aree hanno priorità)",
           "areas_away": "Seleziona le aree da inserire durante l'inserimento away",
           "arm_mode_away": "Seleziona modalità di inserimento away (normale con ritardo uscita, immediato, o forzato bypassando zone aperte)",
@@ -138,6 +135,32 @@
       "arming": "inserimento in corso",
       "pending": "pre-allarme",
       "triggered": "allarme"
+    }
+  },
+  "services": {
+    "arm_areas": {
+      "name": "Arma Aree",
+      "description": "Arma aree specifiche della centrale antifurto",
+      "fields": {
+        "areas": {
+          "name": "Aree",
+          "description": "Seleziona le aree da armare"
+        },
+        "arm_mode": {
+          "name": "Modalità armamento",
+          "description": "Seleziona la modalità di armamento"
+        }
+      }
+    },
+    "disarm_areas": {
+      "name": "Disarma Aree",
+      "description": "Disarma aree specifiche della centrale antifurto",
+      "fields": {
+        "areas": {
+          "name": "Aree",
+          "description": "Seleziona le aree da disarmare (default: tutte le aree)"
+        }
+      }
     }
   }
 }

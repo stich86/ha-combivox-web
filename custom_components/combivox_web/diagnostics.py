@@ -25,10 +25,9 @@ async def async_get_config_entry_diagnostics(
         client: CombivoxWebClient = hass.data[DOMAIN][config_entry.entry_id]["config"]
         coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-        # Filter sensitive data from config_entry_data (remove code, tech_code)
+        # Filter sensitive data from config_entry_data (remove code)
         filtered_data = dict(config_entry.data)
         filtered_data.pop("code", None)
-        filtered_data.pop("tech_code", None)
 
         diagnostic_data = {
             "config_entry_data": filtered_data,

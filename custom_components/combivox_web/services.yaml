@@ -1,78 +1,76 @@
-# Services per l'integrazione Combivox Amica Web
-
 arm_areas:
   name: Arm areas
-  description: Arma le aree specificate della centrale antifurto
+  description: Arm specific areas of the alarm panel
   fields:
     areas:
       name: Areas
-      description: Lista di ID aree da armare (1-8)
+      description: Select areas to arm
       required: true
-      example: [1, 2, 3]
+      example: "1,2,3"
       selector:
         select:
           multiple: true
+          mode: list
           options:
-            - "1"
-            - "2"
-            - "3"
-            - "4"
-            - "5"
-            - "6"
-            - "7"
-            - "8"
-    mode:
-      name: Mode
-      description: Modalità di armamento
+            - label: "Area 1"
+              value: "1"
+            - label: "Area 2"
+              value: "2"
+            - label: "Area 3"
+              value: "3"
+            - label: "Area 4"
+              value: "4"
+            - label: "Area 5"
+              value: "5"
+            - label: "Area 6"
+              value: "6"
+            - label: "Area 7"
+              value: "7"
+            - label: "Area 8"
+              value: "8"
+    arm_mode:
+      name: Arm mode
+      description: Select arm mode
       required: false
-      default: away
-      example: away
+      default: normal
+      example: normal
       selector:
         select:
           options:
-            - away
-            - home
-            - night
-    force:
-      name: Force
-      description: Armamento immediato senza ritardi
-      required: false
-      default: false
-      example: false
-      selector:
-        boolean:
+            - label: Normal with delay
+              value: normal
+            - label: Immediate no delay
+              value: immediate
+            - label: Forced bypass open zones
+              value: forced
 
 disarm_areas:
   name: Disarm areas
-  description: Disarma le aree specificate della centrale antifurto
+  description: Disarm specific areas of the alarm panel. If no areas selected, all areas will be disarmed.
   fields:
     areas:
       name: Areas
-      description: Lista di ID aree da disarmare (1-8), default tutte
+      description: Select areas to disarm (empty = all areas)
       required: false
-      example: [1, 2, 3]
-      default: [1, 2, 3, 4, 5, 6, 7, 8]
+      example: "1,2,3"
       selector:
         select:
           multiple: true
+          mode: list
           options:
-            - "1"
-            - "2"
-            - "3"
-            - "4"
-            - "5"
-            - "6"
-            - "7"
-            - "8"
-
-set_force_mode:
-  name: Set force mode
-  description: Imposta la modalità forza per l'armamento immediato
-  fields:
-    enabled:
-      name: Enabled
-      description: Abilita modalità force
-      required: true
-      example: true
-      selector:
-        boolean:
+            - label: "Area 1"
+              value: "1"
+            - label: "Area 2"
+              value: "2"
+            - label: "Area 3"
+              value: "3"
+            - label: "Area 4"
+              value: "4"
+            - label: "Area 5"
+              value: "5"
+            - label: "Area 6"
+              value: "6"
+            - label: "Area 7"
+              value: "7"
+            - label: "Area 8"
+              value: "8"

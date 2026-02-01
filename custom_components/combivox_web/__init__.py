@@ -55,7 +55,6 @@ from .const import (
     CONF_IP_ADDRESS,
     CONF_PORT,
     CONF_CODE,
-    CONF_TECH_CODE,
     CONF_AREAS_AWAY,
     CONF_AREAS_HOME,
     CONF_AREAS_NIGHT,
@@ -89,7 +88,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     ip_address = entry.data.get(CONF_IP_ADDRESS)
     port = entry.data.get(CONF_PORT, 80)
     code = entry.data.get(CONF_CODE)
-    tech_code = entry.data.get(CONF_TECH_CODE, "000000")
 
     if not ip_address or not code:
         _LOGGER.error("Missing required configuration: ip_address or code")
@@ -104,8 +102,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         code=code,
         port=port,
         config_file_path=config_file_path,
-        timeout=3,  
-        tech_code=tech_code,
+        timeout=3,
     )
 
     # Connect to panel (async) - but allow setup to continue if cache is available
@@ -441,12 +438,23 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
     _LOGGER.info("Unloading Combivox Amica Web integration")
 
-    # Get client
+    # Shutdown coordinator first (stop polling)
+    try:
+        coordinator = hass.data[DOMAIN][entry.entry_id][DATA_COORDINATOR]
+        await coordinator.async_shutdown()
+        _LOGGER.info("Coordinator shutdown complete")
+    except Exception as e:
+        _LOGGER.error("Error shutting down coordinator: %s", e)
+
+    # Close client (cleanup HTTP session and cookies)
     try:
         client = hass.data[DOMAIN][entry.entry_id][DATA_CONFIG]
+        config_file_path = client.get_config_file_path()
         await client.close()
+        _LOGGER.info("Client closed successfully")
     except Exception as e:
         _LOGGER.error("Error closing client: %s", e)
+        config_file_path = None
 
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
@@ -466,5 +474,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         entity_reg.async_clear_config_entry(entry)
 
         _LOGGER.info("Cleared all entities from registry for config entry %s", entry.entry_id)
+
+        # Delete cached config file
+        if config_file_path:
+            import os
+            try:
+                if os.path.exists(config_file_path):
+                    os.remove(config_file_path)
+                    _LOGGER.info("Deleted cached config file: %s", config_file_path)
+                else:
+                    _LOGGER.debug("Config file not found (already deleted): %s", config_file_path)
+            except Exception as e:
+                _LOGGER.error("Error deleting config file %s: %s", config_file_path, e)
 
     return unload_ok
