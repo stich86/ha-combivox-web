@@ -1,0 +1,166 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Combivox Amica Web",
+        "description": "Enter the connection details for your Combivox Amica alarm panel.",
+        "data": {
+          "ip_address": "IP Address",
+          "port": "Port",
+          "code": "Master PIN Code"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the alarm panel",
+      "invalid_auth": "Invalid authentication credentials",
+      "unknown": "An unknown error occurred"
+    },
+    "abort": {
+      "already_configured": "This device is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Integration Options",
+        "description": "Configure PIN codes, scenarios and arm modes.",
+        "data": {
+          "code": "Master PIN Code",
+          "macro_away": "Scenario for Away",
+          "areas_away": "Areas for Away Mode",
+          "arm_mode_away": "Arm Mode - Away",
+          "macro_home": "Scenario for Home",
+          "areas_home": "Areas for Home Mode",
+          "arm_mode_home": "Arm Mode - Home",
+          "macro_night": "Scenario for Night",
+          "areas_night": "Areas for Night Mode",
+          "arm_mode_night": "Arm Mode - Night",
+          "macro_disarm": "Scenario for Disarm",
+          "areas_disarm": "Areas for Disarm Mode",
+          "scan_interval": "Status Poll Interval (seconds)"
+        },
+        "data_description": {
+          "code": "Master PIN code for arm/disarm operations",
+          "macro_away": "Select a scenario to activate when arming away, or leave empty to use areas instead (if both are configured, areas have priority)",
+          "areas_away": "Select areas to arm when arming away",
+          "arm_mode_away": "Select arming mode for away (normal with exit delay, immediate, or forced bypassing open zones)",
+          "macro_home": "Select a scenario to activate when arming home, or leave empty to use areas instead (if both are configured, areas have priority)",
+          "areas_home": "Select areas to arm when arming home",
+          "arm_mode_home": "Select arming mode for home (normal with exit delay, immediate, or forced bypassing open zones)",
+          "macro_night": "Select a scenario to activate when arming night, or leave empty to use areas instead (if both are configured, areas have priority)",
+          "areas_night": "Select areas to arm when arming night",
+          "arm_mode_night": "Select arming mode for night (normal with exit delay, immediate, or forced bypassing open zones)",
+          "macro_disarm": "Select a scenario to activate when disarming, or leave empty to use areas instead (if both are configured, areas have priority)",
+          "areas_disarm": "Select specific areas to disarm when disarming. If left empty, ALL areas will be disarmed (complete disarm)",
+          "scan_interval": "Status polling interval in seconds (default: 5, recommended range: 3-20)"
+        }
+      }
+    }
+  },
+  "selector": {
+    "arm_mode": {
+      "options": {
+        "normal": "Normal",
+        "immediate": "Immediate",
+        "forced": "Forced"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "combivox_system_status": {
+        "name": "System Status",
+        "state": {
+          "disarmed": "Ready",
+          "armed": "Armed",
+          "disarmed_gsm_excluded": "Ready (GSM excluded)",
+          "arming": "Arming",
+          "armed_with_delay": "Armed with delay",
+          "pending": "Pending",
+          "triggered": "In Alarm",
+          "triggered_gsm_excluded": "In Alarm (GSM excluded)",
+          "unknown": "Unknown"
+        }
+      },
+      "combivox_datetime": {
+        "name": "Date/Time"
+      },
+      "combivox_gsm_status": {
+        "name": "GSM Status",
+        "state": {
+          "ok": "OK",
+          "searching": "Searching",
+          "no_sim": "No SIM",
+          "unknown": "Unknown"
+        }
+      },
+      "combivox_gsm_operator": {
+        "name": "GSM Operator",
+        "state": {
+          "other": "Other",
+          "vodafone": "Vodafone",
+          "tim": "TIM",
+          "wind": "Wind",
+          "combivox": "Combivox",
+          "unknown": "Unknown"
+        }
+      },
+      "combivox_gsm_signal": {
+        "name": "GSM Signal"
+      },
+      "combivox_anomalies": {
+        "name": "Anomalies",
+        "state": {
+          "ok": "OK",
+          "gsm_trouble": "GSM Trouble",
+          "bus_trouble": "Bus Trouble",
+          "unknown": "Unknown"
+        }
+      }
+    },
+    "button": {
+      "clear_alarm_memory": {
+        "name": "Clear Alarm Memory"
+      }
+    }
+  },
+  "state": {
+    "alarm_control_panel__combivox_alarm": {
+      "armed_away": "armed away",
+      "armed_home": "armed home",
+      "armed_night": "armed night",
+      "armed_custom_bypass": "armed custom bypass",
+      "disarmed": "ready",
+      "arming": "arming",
+      "pending": "pending",
+      "triggered": "triggered"
+    }
+  },
+  "services": {
+    "arm_areas": {
+      "name": "Arm Areas",
+      "description": "Arm specific areas of the alarm panel",
+      "fields": {
+        "areas": {
+          "name": "Areas",
+          "description": "Select areas to arm"
+        },
+        "arm_mode": {
+          "name": "Arm mode",
+          "description": "Select arm mode"
+        }
+      }
+    },
+    "disarm_areas": {
+      "name": "Disarm Areas",
+      "description": "Disarm specific areas of the alarm panel",
+      "fields": {
+        "areas": {
+          "name": "Areas",
+          "description": "Select areas to disarm (default: all areas)"
+        }
+      }
+    }
+  }
+}

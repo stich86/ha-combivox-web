@@ -1,0 +1,166 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Combivox Amica Web",
+        "description": "Inserisci i dettagli di connessione per la tua centrale antifurto Combivox Amica.",
+        "data": {
+          "ip_address": "Indirizzo IP",
+          "port": "Porta",
+          "code": "Codice PIN Master"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossibile connettersi alla centrale",
+      "invalid_auth": "Credenziali di autenticazione non valide",
+      "unknown": "Si è verificato un errore sconosciuto"
+    },
+    "abort": {
+      "already_configured": "Questo dispositivo è già configurato"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni Integrazione",
+        "description": "Configura codici PIN, scenari e modalità di armamento.",
+        "data": {
+          "code": "Codice PIN Master",
+          "macro_away": "Scenario per Away",
+          "areas_away": "Aree per Modalità Away",
+          "arm_mode_away": "Modalità Armamento - Away",
+          "macro_home": "Scenario per Home",
+          "areas_home": "Aree per Modalità Home",
+          "arm_mode_home": "Modalità Armamento - Home",
+          "macro_night": "Scenario per Night",
+          "areas_night": "Aree per Modalità Night",
+          "arm_mode_night": "Modalità Armamento - Night",
+          "macro_disarm": "Scenario per Disinserimento",
+          "areas_disarm": "Aree per Disinserimento",
+          "scan_interval": "Intervallo Polling Stato (secondi)"
+        },
+        "data_description": {
+          "code": "Codice PIN master per operazioni di inserimento/disinserimento",
+          "macro_away": "Seleziona uno scenario da attivare durante l'inserimento away, oppure lascia vuoto per usare le aree (se entrambi sono configurati, le aree hanno priorità)",
+          "areas_away": "Seleziona le aree da inserire durante l'inserimento away",
+          "arm_mode_away": "Seleziona modalità di inserimento away (normale con ritardo uscita, immediato, o forzato bypassando zone aperte)",
+          "macro_home": "Seleziona uno scenario da attivare durante l'inserimento home, oppure lascia vuoto per usare le aree (se entrambi sono configurati, le aree hanno priorità)",
+          "areas_home": "Seleziona le aree da inserire durante l'inserimento home",
+          "arm_mode_home": "Seleziona modalità di inserimento home (normale con ritardo uscita, immediato, o forzato bypassando zone aperte)",
+          "macro_night": "Seleziona uno scenario da attivare durante l'inserimento night, oppure lascia vuoto per usare le aree (se entrambi sono configurati, le aree hanno priorità)",
+          "areas_night": "Seleziona le aree da inserire durante l'inserimento night",
+          "arm_mode_night": "Seleziona modalità di inserimento night (normale con ritardo uscita, immediato, o forzato bypassando zone aperte)",
+          "macro_disarm": "Seleziona uno scenario da attivare durante il disinserimento, oppure lascia vuoto per usare le aree (se entrambi sono configurati, le aree hanno priorità)",
+          "areas_disarm": "Seleziona aree specifiche da disarmare durante il disinserimento. Se lasciato vuoto, verranno disarmate TUTTE le aree (disinserimento completo)",
+          "scan_interval": "Intervallo di polling stato in secondi (predefinito: 5, range consigliato: 3-20)"
+        }
+      }
+    }
+  },
+  "selector": {
+    "arm_mode": {
+      "options": {
+        "normal": "Normale",
+        "immediate": "Immediato",
+        "forced": "Forzato"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "combivox_system_status": {
+        "name": "Stato Sistema",
+        "state": {
+          "disarmed": "Riposo",
+          "armed": "Inserito",
+          "disarmed_gsm_excluded": "Riposo (GSM escluso)",
+          "arming": "Inserimento in corso",
+          "armed_with_delay": "Inserito con ritardo",
+          "pending": "Pre-allarme",
+          "triggered": "In Allarme",
+          "triggered_gsm_excluded": "In Allarme (GSM Escluso)",
+          "unknown": "Sconosciuto"
+        }
+      },
+      "combivox_datetime": {
+        "name": "Data/Ora"
+      },
+      "combivox_gsm_status": {
+        "name": "Stato GSM",
+        "state": {
+          "ok": "OK",
+          "searching": "In ricerca",
+          "no_sim": "Nessuna SIM",
+          "unknown": "Sconosciuto"
+        }
+      },
+      "combivox_gsm_operator": {
+        "name": "Operatore GSM",
+        "state": {
+          "other": "Altro",
+          "vodafone": "Vodafone",
+          "tim": "TIM",
+          "wind": "Wind",
+          "combivox": "Combivox",
+          "unknown": "Sconosciuto"
+        }
+      },
+      "combivox_gsm_signal": {
+        "name": "Segnale GSM"
+      },
+      "combivox_anomalies": {
+        "name": "Anomalie",
+        "state": {
+          "ok": "OK",
+          "gsm_trouble": "Anomalia GSM",
+          "bus_trouble": "Anomalia Bus",
+          "unknown": "Sconosciuto"
+        }
+      }
+    },
+    "button": {
+      "clear_alarm_memory": {
+        "name": "Cancella Memoria Allarmi"
+      }
+    }
+  },
+  "state": {
+    "alarm_control_panel__combivox_alarm": {
+      "armed_away": "inserito away",
+      "armed_home": "inserito home",
+      "armed_night": "inserito night",
+      "armed_custom_bypass": "inserito personalizzato",
+      "disarmed": "riposo",
+      "arming": "inserimento in corso",
+      "pending": "pre-allarme",
+      "triggered": "allarme"
+    }
+  },
+  "services": {
+    "arm_areas": {
+      "name": "Arma Aree",
+      "description": "Arma aree specifiche della centrale antifurto",
+      "fields": {
+        "areas": {
+          "name": "Aree",
+          "description": "Seleziona le aree da armare"
+        },
+        "arm_mode": {
+          "name": "Modalità armamento",
+          "description": "Seleziona la modalità di armamento"
+        }
+      }
+    },
+    "disarm_areas": {
+      "name": "Disarma Aree",
+      "description": "Disarma aree specifiche della centrale antifurto",
+      "fields": {
+        "areas": {
+          "name": "Aree",
+          "description": "Seleziona le aree da disarmare (default: tutte le aree)"
+        }
+      }
+    }
+  }
+}
