@@ -7,7 +7,7 @@ This page lists tested and confirmed compatible Combivox alarm panel models.
 | Model | Web Interface | Panel Firmware | Web Interface Firmware | Tester | Status | Notes |
 |-------|--------------|----------------|------------------------|---------|--------|-------|
 | Amica 64 GSM | AmicaWeb | 2.2 | 2.5/2.5 | @stich86 | ✅ Working | Full functionality confirmed |
-
+| Amica64LTEGSM| AmicaWeb | 3.4 | 2.5/2.5 | @recluta76 | ✅ Working | Full functionality confirmed |
 
 ## Expected Compatibility
 
