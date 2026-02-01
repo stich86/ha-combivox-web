@@ -126,6 +126,7 @@ For each arm type (Away/Home/Night):
 
 For detailed documentation, see:
 
+- **[XML Analysis](docs/xml_analysis.md)** - Technical analysis of status9.xml byte structure
 - **[Services Documentation](docs/services.md)** - Using arm/disarm services
 - **[Entities Documentation](docs/entities.md)** - All created entities and their attributes
 - **[Authentication Documentation](docs/authentication.md)** - How authentication works
@@ -151,6 +152,7 @@ For issues, questions, or contributions:
 
 ## Documentation
 
+- [XML Analysis](docs/xml_analysis.md) - Technical analysis of status9.xml byte structure
 - [Entities Reference](docs/entities.md) - Complete list of all entities and their attributes
 - [Services](docs/services.md) - Custom services for arm/disarm areas
 - [Authentication](docs/authentication.md) - How authentication works
