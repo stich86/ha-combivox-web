@@ -1,0 +1,15 @@
+{
+  "name": "Combivox Amica Web Integration",
+  "content_in_root": false,
+  "zip_release": false,
+  "filename": "combivox_web.zip",
+  "render_readme": true,
+  "domains": [
+    "alarm_control_panel",
+    "binary_sensor",
+    "button",
+    "sensor"
+  ],
+  "homeassistant": "2025.11.0",
+  "iot_class": "local_polling"
+}

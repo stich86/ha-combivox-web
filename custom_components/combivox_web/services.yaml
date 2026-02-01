@@ -1,0 +1,76 @@
+arm_areas:
+  name: Arm areas
+  description: Arm specific areas of the alarm panel
+  fields:
+    areas:
+      name: Areas
+      description: Select areas to arm
+      required: true
+      example: "1,2,3"
+      selector:
+        select:
+          multiple: true
+          mode: list
+          options:
+            - label: "Area 1"
+              value: "1"
+            - label: "Area 2"
+              value: "2"
+            - label: "Area 3"
+              value: "3"
+            - label: "Area 4"
+              value: "4"
+            - label: "Area 5"
+              value: "5"
+            - label: "Area 6"
+              value: "6"
+            - label: "Area 7"
+              value: "7"
+            - label: "Area 8"
+              value: "8"
+    arm_mode:
+      name: Arm mode
+      description: Select arm mode
+      required: false
+      default: normal
+      example: normal
+      selector:
+        select:
+          options:
+            - label: Normal with delay
+              value: normal
+            - label: Immediate no delay
+              value: immediate
+            - label: Forced bypass open zones
+              value: forced
+
+disarm_areas:
+  name: Disarm areas
+  description: Disarm specific areas of the alarm panel. If no areas selected, all areas will be disarmed.
+  fields:
+    areas:
+      name: Areas
+      description: Select areas to disarm (empty = all areas)
+      required: false
+      example: "1,2,3"
+      selector:
+        select:
+          multiple: true
+          mode: list
+          options:
+            - label: "Area 1"
+              value: "1"
+            - label: "Area 2"
+              value: "2"
+            - label: "Area 3"
+              value: "3"
+            - label: "Area 4"
+              value: "4"
+            - label: "Area 5"
+              value: "5"
+            - label: "Area 6"
+              value: "6"
+            - label: "Area 7"
+              value: "7"
+            - label: "Area 8"
+              value: "8"
