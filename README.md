@@ -82,7 +82,14 @@ After initial setup, click **Configure** on the integration to access advanced o
 
 #### Basic Settings
 - **Scan Interval**: Polling interval in seconds (1-300, default: 5)
-- **Code**: User code for arm/disarm from UI (optional)
+- **Code**: Master Code used to authenticate and arm\disarm areas and macros
+
+> **⚠️ Important Note about Alarm Control Panel PIN Code:**
+> Home Assistant requires a PIN code to be set in the alarm control panel UI (this is a HA requirement).
+> You can enter any **dummy/fake PIN code** in the alarm panel interface - it will not be used.
+> All arm/disarm commands will use the **Master Code** configured here in the integration options.
+>
+> **Example**: Set "1234" (or any code) in the HA alarm panel UI, but all actual commands will use your real Master Code from this configuration.
 
 #### Area Configuration
 - **Areas for Away Mode**: Multi-select of area names for away arming
