@@ -4,6 +4,21 @@ The integration creates multiple Home Assistant entities automatically based on 
 
 > **Important:** Only zones, areas, and macros with **configured names** in the panel are created as entities.
 
+## Entity ID Naming Convention
+
+All entity IDs use a prefix based on the **integration name** you choose during setup in Home Assistant.
+
+**Default prefix:** `combivox_alarm_` (if you keep the default name "Combivox Alarm")
+
+**Custom prefix:** The prefix changes if you customize the integration name during setup.
+
+**Examples:**
+- Default name → `sensor.combivox_alarm_model`
+- Custom name "Casa Allarme" → `sensor.casa_allarme_model`
+- Custom name "Alarm" → `sensor.alarm_model`
+
+> **Note:** In this document, we use the default prefix `combivox_alarm_` for all entity ID examples. Your actual entity IDs may differ based on your integration name.
+
 ## Alarm Control Panel
 
 ### `alarm_control_panel.combivox_alarm`
@@ -19,10 +34,6 @@ The main alarm control panel entity.
 - `triggered` - ALARM! The panel has detected an alarm
 - `pending` - Pre-alarm state
 
-**Attributes:**
-- `area_id` to `area_id_8` - Armed status of each area (boolean)
-- `supported_features` - Bitmask of supported features (arm modes, etc.)
-
 **Configuration:**
 - **Arm Away:** Arms areas configured in "Areas for Away Mode"
 - **Arm Home:** Arms areas configured in "Areas for Home Mode"
@@ -33,7 +44,7 @@ The main alarm control panel entity.
 
 ## System Sensors
 
-### `sensor.combivox_system_status`
+### `sensor.combivox_alarm_ystem_status`
 Current alarm state of the panel.
 
 **States:** `disarmed`, `arming`, `armed_away`, `armed_home`, `armed_night`, `triggered`, `pending`
@@ -41,7 +52,7 @@ Current alarm state of the panel.
 **Attributes:**
 - `alarm_hex` - Raw hex code from panel (e.g., `0C`, `8C`)
 
-### `sensor.combivox_model`
+### `sensor.combivox_alarm_model`
 Device model and web interface type.
 
 **States:** Example: `Amica 64 LTE + AmicaWeb Plus`
@@ -50,13 +61,13 @@ Device model and web interface type.
 - `model_raw` - Raw model name from panel
 - `web_interface` - Web interface type (AmicaWeb, AmicaWeb Plus, SmartWeb)
 
-### `sensor.combivox_datetime`
+### `sensor.combivox_alarm_datetime`
 Panel date and time.
 
 **Attributes:**
 - `datetime` - ISO 8601 formatted datetime with timezone
 
-### `sensor.combivox_gsm_status`
+### `sensor.combivox_alarm_gsm_status`
 GSM connection status.
 
 **States:**
@@ -68,7 +79,7 @@ GSM connection status.
 **Attributes:**
 - `gsm_hex` - Raw hex status code from panel
 
-### `sensor.combivox_gsm_operator`
+### `sensor.combivox_alarm_gsm_operator`
 GSM operator name.
 
 **States:** `vodafone`, `tim`, `wind`, `combivox`, `other`, `unknown`
@@ -76,7 +87,7 @@ GSM operator name.
 **Attributes:**
 - `operator_hex` - Raw hex operator code
 
-### `sensor.combivox_gsm_signal`
+### `sensor.combivox_alarm_gsm_signal`
 GSM signal strength as percentage.
 
 **States:** `0` to `100` (percentage)
@@ -84,7 +95,7 @@ GSM signal strength as percentage.
 **Attributes:**
 - `signal_bars` - Signal strength in bars (0-5)
 
-### `sensor.combivox_anomalies`
+### `sensor.combivox_alarm_anomalies`
 System anomalies/trouble status.
 
 **States:**
@@ -100,7 +111,7 @@ System anomalies/trouble status.
 
 ## Diagnostic Buttons
 
-### `button.combivox_clear_alarm_memory`
+### `button.combivox_alarm_clear_alarm_memory`
 Clears alarm memory from the panel.
 
 **Action:** Press the button to clear all alarm memory entries
@@ -113,7 +124,7 @@ Clears alarm memory from the panel.
 
 For each zone with a configured name, the integration creates:
 
-### `binary_sensor.<zone_name>`
+### `binary_sensor.combivox_alarm_<zone_name>`
 
 Zone open/closed status sensor.
 
@@ -140,7 +151,7 @@ Zone open/closed status sensor.
 
 For each zone with a configured name, the integration creates:
 
-### `button.<zone_name>_bypass`
+### `button.combivox_alarm_<zone_name>_bypass`
 
 Toggle zone inclusion/exclusion (bypass).
 
@@ -162,7 +173,7 @@ Toggle zone inclusion/exclusion (bypass).
 
 For each area with a configured name, the integration creates:
 
-### `binary_sensor.<area_name>`
+### `binary_sensor.combivox_alarm_<area_name>`
 
 Area armed/disarmed status sensor.
 
@@ -188,7 +199,7 @@ Area armed/disarmed status sensor.
 
 For each macro/scenario with a configured name, the integration creates:
 
-### `button.<macro_name>`
+### `button.combivox_alarm_<macro_name>`
 
 Execute a macro/scenario on the panel.
 
