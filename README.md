@@ -150,15 +150,5 @@ For issues, questions, or contributions:
 - **GitHub Issues**: [Create an issue](https://github.com/stich86/ha-combivox-web/issues)
 - **Supported Models**: Help us improve - report your panel model in [Supported Models](docs/supported-models.md)
 
-## Documentation
-
-- [XML Analysis](docs/xml_analysis.md) - Technical analysis of status9.xml byte structure
-- [Entities Reference](docs/entities.md) - Complete list of all entities and their attributes
-- [Services](docs/services.md) - Custom services for arm/disarm areas
-- [Authentication](docs/authentication.md) - How authentication works
-- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
-- [Supported Models](docs/supported-models.md) - Tested and compatible panel models
-- [TODO & Improvements](docs/todo.md) - XML byte mapping status and planned improvements
-
 [hacs-shield]: https://img.shields.io/badge/hacs-default-orange.svg
 [hacs-url]: https://hacs.xyz/
