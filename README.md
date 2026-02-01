@@ -1,5 +1,6 @@
 # Combivox Alarm Web Integration for Home Assistant
 
+[![hacs][hacs-shield]][hacs-url]
 [![GitHub Release](https://img.shields.io/github/v/release/stich86/ha-combivox-web)](https://github.com/stich86/ha-combivox-web/releases)
 [![License](https://img.shields.io/github/license/stich86/ha-combivox-web)](LICENSE)
 
@@ -149,3 +150,6 @@ For issues, questions, or contributions:
 - [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
 - [Supported Models](docs/supported-models.md) - Tested and compatible panel models
 - [TODO & Improvements](docs/todo.md) - XML byte mapping status and planned improvements
+
+[hacs-shield]: https://img.shields.io/badge/hacs-default-orange.svg
+[hacs-url]: https://hacs.xyz/
