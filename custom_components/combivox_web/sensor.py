@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .base import CombivoxWebClient
 from .const import (
@@ -57,11 +58,12 @@ async def async_setup_entry(
     async_add_entities(entities, update_before_add=True)
 
 
-class CombivoxSystemStatusSensor(SensorEntity):
+class CombivoxSystemStatusSensor(CoordinatorEntity, SensorEntity):
     """Sensor for system alarm status."""
 
     def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
         """Initialize the system status sensor."""
+        super().__init__(coordinator)
         self.coordinator = coordinator
 
         self._attr_unique_id = "combivox_system_status"
@@ -100,16 +102,13 @@ class CombivoxSystemStatusSensor(SensorEntity):
         """Return if entity is available."""
         return not self.coordinator._panel_unavailable
 
-    async def async_update(self):
-        """Update the entity."""
-        await self.coordinator.async_request_refresh()
 
-
-class CombivoxDateTimeSensor(SensorEntity):
+class CombivoxDateTimeSensor(CoordinatorEntity, SensorEntity):
     """Sensor for device date and time."""
 
     def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
         """Initialize the datetime sensor."""
+        super().__init__(coordinator)
         self.coordinator = coordinator
 
         self._attr_unique_id = "combivox_datetime"
@@ -145,11 +144,12 @@ class CombivoxDateTimeSensor(SensorEntity):
         return not self.coordinator._panel_unavailable
 
 
-class CombivoxGSMStatusSensor(SensorEntity):
+class CombivoxGSMStatusSensor(CoordinatorEntity, SensorEntity):
     """Sensor for GSM status."""
 
     def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
         """Initialize the GSM status sensor."""
+        super().__init__(coordinator)
         self.coordinator = coordinator
 
         self._attr_unique_id = "combivox_gsm_status"
@@ -186,11 +186,12 @@ class CombivoxGSMStatusSensor(SensorEntity):
         return not self.coordinator._panel_unavailable
 
 
-class CombivoxGSMOperatorSensor(SensorEntity):
+class CombivoxGSMOperatorSensor(CoordinatorEntity, SensorEntity):
     """Sensor for GSM operator."""
 
     def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
         """Initialize the GSM operator sensor."""
+        super().__init__(coordinator)
         self.coordinator = coordinator
 
         self._attr_unique_id = "combivox_gsm_operator"
@@ -227,11 +228,12 @@ class CombivoxGSMOperatorSensor(SensorEntity):
         return not self.coordinator._panel_unavailable
 
 
-class CombivoxGSMSignalSensor(SensorEntity):
+class CombivoxGSMSignalSensor(CoordinatorEntity, SensorEntity):
     """Sensor for GSM signal strength."""
 
     def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
         """Initialize the GSM signal sensor."""
+        super().__init__(coordinator)
         self.coordinator = coordinator
 
         self._attr_unique_id = "combivox_gsm_signal"
@@ -268,11 +270,12 @@ class CombivoxGSMSignalSensor(SensorEntity):
         return not self.coordinator._panel_unavailable
 
 
-class CombivoxAnomaliesSensor(SensorEntity):
+class CombivoxAnomaliesSensor(CoordinatorEntity, SensorEntity):
     """Sensor for anomalies/trouble status."""
 
     def __init__(self, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
         """Initialize the anomalies sensor."""
+        super().__init__(coordinator)
         self.coordinator = coordinator
 
         self._attr_unique_id = "combivox_anomalies"

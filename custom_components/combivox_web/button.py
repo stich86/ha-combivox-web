@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .base import CombivoxWebClient
 from .const import DOMAIN, DATA_COORDINATOR, DATA_CONFIG
@@ -86,7 +87,7 @@ async def async_setup_entry(
     async_add_entities(entities, update_before_add=True)
 
 
-class CombivoxZoneBypassButton(ButtonEntity):
+class CombivoxZoneBypassButton(CoordinatorEntity, ButtonEntity):
     """Button for zone bypass toggle."""
 
     def __init__(
@@ -98,6 +99,7 @@ class CombivoxZoneBypassButton(ButtonEntity):
         zone_name: str
     ):
         """Initialize the zone bypass button."""
+        super().__init__(coordinator)
         self.coordinator = coordinator
         self.client = client
         self.zone_id = zone_id
@@ -153,7 +155,7 @@ class CombivoxZoneBypassButton(ButtonEntity):
             _LOGGER.error("Failed to toggle zone %d bypass", self.zone_id)
 
 
-class CombivoxMacroButton(ButtonEntity):
+class CombivoxMacroButton(CoordinatorEntity, ButtonEntity):
     """Button for executing macros (scenarios)."""
 
     def __init__(
@@ -165,6 +167,7 @@ class CombivoxMacroButton(ButtonEntity):
         macro_name: str
     ):
         """Initialize the macro button."""
+        super().__init__(coordinator)
         self.coordinator = coordinator
         self.client = client
         self.macro_id = macro_id
@@ -207,7 +210,7 @@ class CombivoxMacroButton(ButtonEntity):
             _LOGGER.error("Failed to execute macro %d (%s)", self.macro_id, self.macro_name)
 
 
-class CombivoxClearAlarmMemoryButton(ButtonEntity):
+class CombivoxClearAlarmMemoryButton(CoordinatorEntity, ButtonEntity):
     """Button for clearing alarm memory."""
 
     def __init__(
@@ -217,6 +220,7 @@ class CombivoxClearAlarmMemoryButton(ButtonEntity):
         device_info: Dict[str, Any]
     ):
         """Initialize the clear alarm memory button."""
+        super().__init__(coordinator)
         self.coordinator = coordinator
         self.client = client
 

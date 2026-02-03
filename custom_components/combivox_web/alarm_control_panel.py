@@ -12,6 +12,7 @@ from homeassistant.components.alarm_control_panel import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .base import CombivoxWebClient
 from .const import (
@@ -96,7 +97,7 @@ async def async_setup_entry(
     _LOGGER.info("Alarm control panel added")
 
 
-class CombivoxAlarmControlPanel(AlarmControlPanelEntity):
+class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
     """Alarm control panel for Combivox."""
 
     def __init__(
@@ -117,6 +118,7 @@ class CombivoxAlarmControlPanel(AlarmControlPanelEntity):
         arm_mode_night: str = "normal",
     ):
         """Initialize the alarm control panel."""
+        super().__init__(coordinator)
         self.client = client
         self.coordinator = coordinator
 
