@@ -10,6 +10,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .base import CombivoxWebClient
 from .const import DOMAIN, DATA_COORDINATOR, DATA_CONFIG
@@ -71,11 +72,12 @@ async def async_setup_entry(
     async_add_entities(entities, update_before_add=True)
 
 
-class CombivoxZoneBinarySensor(BinarySensorEntity):
+class CombivoxZoneBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor for a Combivox zone."""
 
     def __init__(self, zone_id: int, zone_name: str, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
         """Initialize the zone sensor."""
+        super().__init__(coordinator)
         self.zone_id = zone_id
         self.zone_name = zone_name
         self.coordinator = coordinator
@@ -114,16 +116,13 @@ class CombivoxZoneBinarySensor(BinarySensorEntity):
         """Return if entity is available."""
         return not self.coordinator._panel_unavailable
 
-    async def async_update(self):
-        """Update the entity."""
-        await self.coordinator.async_request_refresh()
 
-
-class CombivoxAreaBinarySensor(BinarySensorEntity):
+class CombivoxAreaBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor for a Combivox area."""
 
     def __init__(self, area_id: int, area_name: str, coordinator: CombivoxDataUpdateCoordinator, device_info: Dict[str, Any]):
         """Initialize the area sensor."""
+        super().__init__(coordinator)
         self.area_id = area_id
         self.area_name = area_name
         self.coordinator = coordinator
@@ -172,7 +171,3 @@ class CombivoxAreaBinarySensor(BinarySensorEntity):
     def available(self) -> bool:
         """Return if entity is available."""
         return not self.coordinator._panel_unavailable
-
-    async def async_update(self):
-        """Update the entity."""
-        await self.coordinator.async_request_refresh()
