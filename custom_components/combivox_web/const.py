@@ -95,14 +95,16 @@ TROUBLE_ID_TO_DESCRIPTION = {
     15: {"en": "Insufficient credit", "it": "Credito residuo insufficiente"}
 }
 
-# Alarm hex to HA state mapping (priority states checked first)
+# Alarm hex to HA state mapping (complete mapping)
 ALARM_HEX_TO_HA_STATE = {
-    "8C": "triggered",           # in_allarme
-    "8D": "pending",             # pre_allarme
-    "0E": "arming",              # inserimento_ritardato
-    "0D": "arming",              # non_in_allarme_con_ritardo
-    "0A": "arming",              # non_in_allarme_con_ritardo_parziale
-    "88": "triggered",           # in_allarme_gsm_escluso
+    "08": "disarmed_gsm_excluded",   # Rest (no GSM)
+    "0C": "disarmed",                # Rest
+    "0E": "arming",                  # Arming (entry delay)
+    "0A": "arming",                  # Arming (entry delay)
+    "0D": "armed_with_delay",        # Arming (exit delay)
+    "8D": "pending",                 # Pre-alarm
+    "88": "triggered_gsm_excluded",  # ALARM TRIGGERED (no GSM)
+    "8C": "triggered"                # ALARM TRIGGERED    
 }
 
 # Data keys

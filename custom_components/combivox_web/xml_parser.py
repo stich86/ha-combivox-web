@@ -5,6 +5,8 @@ import logging
 import datetime
 from typing import Dict, List, Optional, Any
 
+from .const import ALARM_HEX_TO_HA_STATE, ANOMALIES_HEX_TO_HA_STATE
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -335,21 +337,10 @@ class CombivoxXMLParser:
             if marker_pos >= 32:
                 alarm_hex = si[marker_pos - 32:marker_pos - 30]
 
-                # Unified alarm state mapping
-                alarm_states_map = {
-                    "08": "disarmed_gsm_excluded",  # Rest (no GSM)
-                    "0C": "disarmed",                # Rest
-                    "0E": "arming",                  # Arming (entry delay)
-                    "0D": "armed_with_delay",        # Armed (exit delay)
-                    "8D": "pending",                 # Pre-alarm
-                    "8C": "triggered",               # ALARM TRIGGERED
-                    "88": "triggered_gsm_excluded"   # ALARM TRIGGERED (no GSM)
-                }
-
                 # Use match/case for clean state determination (Python 3.10+)
                 match alarm_hex:
-                    case key if key in alarm_states_map:
-                        state = alarm_states_map[key]
+                    case key if key in ALARM_HEX_TO_HA_STATE:
+                        state = ALARM_HEX_TO_HA_STATE[key]
                         alarm_state = state  # For logging
                         _LOGGER.debug("Panel state changed: pos_start=%d pos_end=%d hex=%s state=%s", marker_pos - 32, marker_pos - 30, alarm_hex, alarm_state)
                     case _:
