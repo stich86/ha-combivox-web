@@ -276,6 +276,7 @@ def print_analysis(si_value, prev_si):
             0x08: "DISARMED_GSM_EXCLUDED",
             0x0C: "DISARMED",
             0x0D: "DISARMED_WITH_DELAY",
+            0x0A: "ARMING",
             0x0E: "ARMING",
             0x8D: "PENDING",
             0x8C: "TRIGGERED",
