@@ -101,6 +101,8 @@ ALARM_HEX_TO_HA_STATE = {
     "8D": "pending",             # pre_allarme
     "0E": "arming",              # inserimento_ritardato
     "0D": "arming",              # non_in_allarme_con_ritardo
+    "0A": "arming",              # non_in_allarme_con_ritardo_parziale
+    "08": "arming",              # non_in_allarme_con_ritardo_parziale
     "88": "triggered",           # in_allarme_gsm_escluso
 }
 
