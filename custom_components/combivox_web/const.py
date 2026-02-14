@@ -97,12 +97,22 @@ TROUBLE_ID_TO_DESCRIPTION = {
 
 # Alarm hex to HA state mapping (priority states checked first)
 ALARM_HEX_TO_HA_STATE = {
-    "8C": "triggered",           # in_allarme
-    "8D": "pending",             # pre_allarme
     "0E": "arming",              # inserimento_ritardato
     "0D": "arming",              # non_in_allarme_con_ritardo
     "0A": "arming",              # non_in_allarme_con_ritardo_parziale
+    "8D": "pending",             # pre_allarme
     "88": "triggered",           # in_allarme_gsm_escluso
+    "8C": "triggered"            # in_allarme
+}
+
+ALARM_HEX_TO_AP_STATE ={ 
+    "08": "disarmed_gsm_excluded",  # Rest (no GSM)
+    "0C": "disarmed",                # Rest
+    "0E": "arming",                  # Arming (entry delay)
+    "0D": "armed_with_delay",        # Armed (exit delay)
+    "8D": "pending",                 # Pre-alarm
+    "8C": "triggered",               # ALARM TRIGGERED
+    "88": "triggered_gsm_excluded"   # ALARM TRIGGERED (no GSM)
 }
 
 # Data keys
