@@ -31,9 +31,17 @@ jobs:
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Prepare Release Name
+        id: release_name
+        run: |
+          # Strip 'v' prefix from tag name for release title
+          RELEASE_NAME="Release ${GITHUB_REF_NAME#v}"
+          echo "name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          name: ${{ steps.release_name.outputs.name }}
           body: |
             ## What's Changed
 
