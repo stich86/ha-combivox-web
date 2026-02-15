@@ -245,10 +245,10 @@ class CombivoxXMLParser:
                 if pos == -1:
                     break
 
-                # Verify that after the marker there are 4 characters (0000 or 0101)
+                # Verify that after the marker there are 4 characters (0000, 0101, F700)
                 if pos + 10 <= len(si):
                     next_bytes = si[pos + 6:pos + 10]
-                    if next_bytes in ["0000", "0101"]:
+                    if next_bytes in ["0000", "0101", "F700"]:
                         marker_pos = pos
                         break
 
