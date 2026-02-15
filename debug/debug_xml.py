@@ -226,7 +226,7 @@ def print_analysis(si_value, prev_si):
     for i in range(len(si_value) - 10):  # Need space for marker (6) + 4 chars
         if si_value[i:i+6] == "FFFFFF":  # 3 bytes of FF
             next_bytes = si_value[i+6:i+10]
-            if next_bytes in ["0000", "0101"]:
+            if next_bytes in ["0000", "0101", "F700"]:
                 pos_marker = i
                 break
 
