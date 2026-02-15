@@ -106,9 +106,10 @@ ALARM_HEX_TO_HA_STATE = {
 }
 
 ALARM_HEX_TO_AP_STATE ={ 
-    "08": "disarmed_gsm_excluded",  # Rest (no GSM)
+    "08": "disarmed_gsm_excluded",   # Rest (no GSM)
     "0C": "disarmed",                # Rest
     "0E": "arming",                  # Arming (entry delay)
+    "0A": "arming",                  # Arming (entry delay)
     "0D": "armed_with_delay",        # Armed (exit delay)
     "8D": "pending",                 # Pre-alarm
     "8C": "triggered",               # ALARM TRIGGERED
