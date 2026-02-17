@@ -38,6 +38,14 @@ jobs:
           RELEASE_NAME="Release ${GITHUB_REF_NAME#v}"
           echo "name=$RELEASE_NAME" >> $GITHUB_OUTPUT
 
+          # Check if this is a pre-release (contains rc, beta, alpha)
+          TAG_NAME="${GITHUB_REF_NAME#v}"
+          if [[ "$TAG_NAME" =~ (rc|beta|alpha|pre) ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -47,6 +55,6 @@ jobs:
 
             ${{ steps.changelog.outputs.changelog }}
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.release_name.outputs.prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

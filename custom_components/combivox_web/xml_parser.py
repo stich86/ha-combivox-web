@@ -686,6 +686,127 @@ class CombivoxXMLParser:
             return []
 
     @staticmethod
+    def parse_command_ids(xml_content: str) -> List[int]:
+        """
+        Parse the numComandiProg XML and extract command IDs.
+
+        Returns:
+            List of command IDs: [1, 2, 3, 5, 8, ...]
+        """
+        try:
+            root = ET.fromstring(xml_content)
+
+            # Extract command numbers from tags c0, c1, c2, ...
+            command_ids = []
+            for i in range(100):  # Max 100 commands
+                tag = root.find(f'c{i}')
+                if tag is not None and tag.text:
+                    try:
+                        command_id = int(tag.text.strip())
+                        command_ids.append(command_id)
+                    except ValueError:
+                        continue
+
+            _LOGGER.debug("Found %d commands: %s", len(command_ids), command_ids)
+            return command_ids
+
+        except Exception as e:
+            _LOGGER.error("Error parsing numComandiProg.xml: %s", e)
+            return []
+
+    @staticmethod
+    def parse_command_labels(xml_content: str, command_ids: List[int]) -> List[Dict[str, Any]]:
+        """
+        Parse the command labels response and extract command names and types.
+
+        The XML response has a <response> tag with pipe-separated hex-encoded commands.
+        Format: <response>HEX_NAME1~type1|HEX_NAME2~type2|HEX_NAME3~type3|...</response>
+        Type can be: 2 (impulsivo/button) or 6 (bistabile/switch)
+
+        Args:
+            xml_content: XML content from command labels request
+            command_ids: List of command IDs (in order)
+
+        Returns:
+            List of dict: [{"command_id": 1, "command_name": "Luci Sala", "command_type": "button"}, ...]
+        """
+        try:
+            root = ET.fromstring(xml_content)
+
+            # The <response> tag IS the root element in this XML format
+            if root.tag != 'response':
+                _LOGGER.warning("Unexpected root tag: %s (expected 'response')", root.tag)
+
+            if not root.text:
+                _LOGGER.warning("Response tag has no text content")
+                return []
+
+            # Get the pipe-separated content from root
+            content = root.text.strip()
+
+            # Split by pipe to get individual commands
+            command_parts = content.split('|')
+
+            commands = []
+
+            # Parse each command part (index + 1 = command_id)
+            for idx, part in enumerate(command_parts):
+                if not part.strip():
+                    continue
+
+                command_id = command_ids[idx] if idx < len(command_ids) else idx + 1
+
+                # Split by tilde to get hex_name and type
+                tilde_pos = part.find('~')
+                if tilde_pos > 0:
+                    hex_name = part[:tilde_pos]
+                    type_str = part[tilde_pos + 1:]
+                else:
+                    hex_name = part
+                    type_str = ""
+
+                _LOGGER.debug("Command %d - hex_name: %s, type_str: %s", command_id, hex_name, type_str)
+
+                try:
+                    # Decode hex to string
+                    name = bytes.fromhex(hex_name).decode('utf-8')
+
+                    # Parse command type: 2 = impulsivo (button), 6 = bistabile (switch)
+                    command_type = "button"  # default
+                    if type_str:
+                        try:
+                            type_val = int(type_str)
+                            if type_val == 6:
+                                command_type = "switch"
+                            elif type_val == 2:
+                                command_type = "button"
+                            else:
+                                _LOGGER.debug("Unknown command type %d for command %d, defaulting to button",
+                                             type_val, command_id)
+                        except ValueError:
+                            _LOGGER.debug("Invalid command type '%s' for command %d, defaulting to button",
+                                         type_str, command_id)
+
+                    commands.append({
+                        "command_id": command_id,
+                        "command_name": name,
+                        "command_type": command_type
+                    })
+
+                    _LOGGER.debug("Parsed command %d: %s (type: %s)", command_id, name, command_type)
+                except ValueError as e:
+                    _LOGGER.warning("Unable to decode command label %d: %s (hex: %s)",
+                                 command_id, e, hex_name[:50])
+                    continue
+
+            _LOGGER.debug("Loaded %d commands", len(commands))
+            return commands
+
+        except Exception as e:
+            _LOGGER.error("Error parsing command labels: %s", e)
+            return []
+
+    @staticmethod
     def parse_prog_state_labels(xml_content: str) -> Dict[str, List[Dict[str, Any]]]:
         """
         Parse the labelProgStato XML and extract zone and area names.

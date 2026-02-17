@@ -68,12 +68,16 @@ LABELAREA_URL = "/labelAree.xml"
 LOGIN_URL = "/login.cgi"
 LOGIN2_URL = "/login2.cgi"
 INSAREA_URL = "/insAree.xml"
+REQPROG_URL = "/reqProg.cgi"
 NUMMACRO_URL = "/numMacro.xml"
 EXECCHANGEIMP_URL = "/execChangeImp.xml"
+EXECCMD_URL = "/execCmd.xml"
 EXECDELMEM_URL = "/execDelMem.xml"
 NUMTROUBLE_URL = "/numTrouble.xml"
 NUMMEMPROG_URL = "/numMemProg.xml"
 LABELMEM_URL = "/labelMem.xml"
+NUMCOMANDIPROG_URL = "/numComandiProg.xml"
+LABELCOMANDI_URL = "/labelComandi.xml"
 
 # Trouble ID to description mapping (from labelTrouble.xml t0-t15)
 TROUBLE_ID_TO_DESCRIPTION = {

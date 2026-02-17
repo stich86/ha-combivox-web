@@ -77,6 +77,7 @@ PLATFORMS = [
     Platform.SENSOR,
     Platform.ALARM_CONTROL_PANEL,
     Platform.BUTTON,
+    Platform.SWITCH,
 ]
 
 

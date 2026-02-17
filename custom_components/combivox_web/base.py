@@ -17,10 +17,13 @@ from .const import (
     INSAREA_URL,
     NUMMACRO_URL,
     EXECCHANGEIMP_URL,
+    EXECCMD_URL,
     EXECDELMEM_URL,
     NUMTROUBLE_URL,
     NUMMEMPROG_URL,
     LABELMEM_URL,
+    NUMCOMANDIPROG_URL,
+    LABELCOMANDI_URL,
     CONF_IP_ADDRESS,
     CONF_PORT,
     CONF_CODE,
@@ -73,17 +76,18 @@ class CombivoxWebClient:
         self._areas_config: List[Dict[str, Any]] = []
         self._area_name_map: Dict[int, str] = {}  # Cache for area_id -> area_name lookup
         self._macros_config: List[Dict[str, Any]] = []
+        self._commands_config: List[Dict[str, Any]] = []
         self._zone_ids: List[int] = []  # Active zone IDs from numZoneProg.xml
         self._device_info: Optional[Dict[str, Any]] = None
 
     def is_config_loaded(self) -> bool:
         """
-        Check if configuration (zones/areas/macros) has been loaded.
+        Check if configuration (zones/areas/macros/commands) has been loaded.
 
         Returns:
-            True if at least one of zones, areas, or macros config is loaded
+            True if at least one of zones, areas, macros, or commands config is loaded
         """
-        return bool(self._zones_config or self._areas_config or self._macros_config)
+        return bool(self._zones_config or self._areas_config or self._macros_config or self._commands_config)
 
     async def connect(self) -> bool:
         """
@@ -121,7 +125,7 @@ class CombivoxWebClient:
 
     async def reload_configuration(self) -> bool:
         """
-        Force reload configuration from panel (zones, areas, macros).
+        Force reload configuration from panel (zones, areas, macros, commands).
 
         This method re-downloads the configuration from the panel and compares
         with the previous configuration to detect changes.
@@ -135,8 +139,10 @@ class CombivoxWebClient:
         # Store previous config for comparison
         prev_zones_count = len(self._zones_config) if self._zones_config else 0
         prev_macros_count = len(self._macros_config) if self._macros_config else 0
+        prev_commands_count = len(self._commands_config) if self._commands_config else 0
         prev_zone_ids = set(self._zone_ids) if self._zone_ids else set()
         prev_macro_ids = set(m.get("id") for m in self._macros_config) if self._macros_config else set()
+        prev_command_ids = set(c.get("id") for c in self._commands_config) if self._commands_config else set()
 
         # Re-download configuration using existing session (don't reauthenticate)
         try:
@@ -160,6 +166,13 @@ class CombivoxWebClient:
             else:
                 _LOGGER.warning("Failed to download macros config during reload")
 
+            # Download commands (uses existing session)
+            commands_config = await self._download_commands_config()
+            if commands_config:
+                self._commands_config = commands_config
+            else:
+                _LOGGER.warning("Failed to download commands config during reload")
+
             # Save to file
             if self._config_file_path:
                 await self._save_config_to_file()
@@ -167,23 +180,28 @@ class CombivoxWebClient:
             # Compare configurations
             new_zones_count = len(self._zones_config) if self._zones_config else 0
             new_macros_count = len(self._macros_config) if self._macros_config else 0
+            new_commands_count = len(self._commands_config) if self._commands_config else 0
             new_zone_ids = set(self._zone_ids) if self._zone_ids else set()
             new_macro_ids = set(m.get("id") for m in self._macros_config) if self._macros_config else set()
+            new_command_ids = set(c.get("id") for c in self._commands_config) if self._commands_config else set()
 
             # Check for changes
             zones_changed = (prev_zones_count != new_zones_count or
                             prev_zone_ids != new_zone_ids)
             macros_changed = (prev_macros_count != new_macros_count or
                              prev_macro_ids != new_macro_ids)
+            commands_changed = (prev_commands_count != new_commands_count or
+                               prev_command_ids != new_command_ids)
 
-            if zones_changed or macros_changed:
-                _LOGGER.info("Configuration changed - zones: %d→%d, macros: %d→%d",
+            if zones_changed or macros_changed or commands_changed:
+                _LOGGER.info("Configuration changed - zones: %d→%d, macros: %d→%d, commands: %d→%d",
                            prev_zones_count, new_zones_count,
-                           prev_macros_count, new_macros_count)
+                           prev_macros_count, new_macros_count,
+                           prev_commands_count, new_commands_count)
                 return True
             else:
-                _LOGGER.info("Configuration unchanged - zones: %d, macros: %d",
-                           new_zones_count, new_macros_count)
+                _LOGGER.info("Configuration unchanged - zones: %d, macros: %d, commands: %d",
+                           new_zones_count, new_macros_count, new_commands_count)
                 return False
 
         except Exception as e:
@@ -235,8 +253,14 @@ class CombivoxWebClient:
             self._macros_config = macros_config
             _LOGGER.info("Loaded %d macros (scenarios)", len(self._macros_config))
 
+        # Download commands configuration
+        commands_config = await self._download_commands_config()
+        if commands_config:
+            self._commands_config = commands_config
+            _LOGGER.info("Loaded %d commands", len(self._commands_config))
+
         # Save to file if path provided
-        if self._config_file_path and (prog_state or macros_config):
+        if self._config_file_path and (prog_state or macros_config or commands_config):
             await self._save_config_to_file()
 
         return True
@@ -446,8 +470,128 @@ class CombivoxWebClient:
             _LOGGER.error("Error downloading macros configuration: %s", e)
             return None
 
+    async def _download_commands_config(self) -> Optional[List[Dict[str, Any]]]:
+        """
+        Download commands configuration.
+
+        Process:
+        1. GET reqProg.cgi?id=4&idc=49 to trigger command data population
+        2. Wait 2 seconds for data to be populated
+        3. GET numComandiProg.xml to get command IDs
+        4. POST with payload comandi=id1;id2;etc to get command labels
+        5. Parse labels and return list of commands with types
+
+        Returns:
+            List of command configs: [{"command_id": 1, "command_name": "Luci Sala", "command_type": "button"}, ...]
+        """
+        try:
+            if not self._auth.is_authenticated():
+                _LOGGER.error("Not authenticated, cannot download commands configuration")
+                return None
+
+            session = self._auth.get_session()
+            headers = {}
+            cookie = self._auth.get_cookie()
+            if cookie:
+                headers["Cookie"] = cookie
+
+            # Step 1: Trigger command data population (id=4 for commands)
+            # This is required to populate the data before downloading
+            trigger_url = f"{self.base_url}/reqProg.cgi?id=4&idc=49"
+
+            # Add Referer header as required by the panel
+            headers_with_referer = headers.copy()
+            headers_with_referer["Referer"] = f"{self.base_url}/index.htm?id=6"
+
+            _LOGGER.debug("Triggering command data population: URL=%s, Referer=%s",
+                         trigger_url, headers_with_referer.get("Referer"))
+
+            try:
+                async with session.get(trigger_url, headers=headers_with_referer, timeout=self.timeout) as response:
+                    if response.status == 200:
+                        _LOGGER.debug("Command data population triggered successfully")
+                    else:
+                        _LOGGER.warning("Trigger request returned status %d (continuing anyway)", response.status)
+            except Exception as e:
+                _LOGGER.warning("Failed to trigger command data population: %s (continuing anyway)", e)
+
+            # Step 2: Wait 2 seconds for data to be populated
+            await asyncio.sleep(2)
+
+            # Step 3: Download numComandiProg.xml to get command IDs
+            url = f"{self.base_url}{NUMCOMANDIPROG_URL}"
+            _LOGGER.debug("Downloading numComandiProg.xml: URL=%s", url)
+
+            async with session.get(url, headers=headers, timeout=self.timeout) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to download numComandiProg.xml: status %d", response.status)
+                    return None
+
+                text = await response.text()
+                _LOGGER.debug("Downloaded numComandiProg.xml successfully (%d bytes)", len(text))
+
+            # Parse command IDs
+            command_ids = self._parser.parse_command_ids(text)
+            if not command_ids:
+                _LOGGER.info("No commands found in numComandiProg.xml")
+                return []
+
+            _LOGGER.debug("Found %d command IDs: %s", len(command_ids), command_ids)
+
+            # Step 4: Download command labels using the IDs
+            # Build comandi parameter with command IDs
+            comandi_param = ";".join(str(c_id) for c_id in command_ids) + ";"
+            labels_url = f"{self.base_url}{LABELCOMANDI_URL}"
+
+            # Build POST payload
+            payload = f"comandi={comandi_param}"
+
+            # Add Referer header as required by the panel
+            headers_with_referer = headers.copy()
+            headers_with_referer["Referer"] = f"{self.base_url}/index.htm?id=6"
+
+            # Try multiple times to download labels (panel takes time to respond)
+            max_retries = 10
+            text = None
+
+            for attempt in range(1, max_retries + 1):
+                _LOGGER.debug("Downloading command labels (attempt %d/%d): URL=%s, Referer=%s, cookie=%s, payload=%s",
+                             attempt, max_retries, labels_url, headers_with_referer.get("Referer"),
+                             cookie, payload)
+
+                async with session.post(labels_url, headers=headers_with_referer, data=payload, timeout=self.timeout) as response:
+                    if response.status == 200:
+                        text = await response.text()
+                        _LOGGER.info("Downloaded command labels successfully on attempt %d (%d bytes)", attempt, len(text))
+                        break
+                    else:
+                        _LOGGER.warning("Attempt %d failed: status %d", attempt, response.status)
+                        if attempt < max_retries:
+                            await asyncio.sleep(1)  # Wait 1 second between retries
+
+            if text is None:
+                _LOGGER.warning("Failed to download command labels after %d attempts (using IDs only)", max_retries)
+                # Return commands without names
+                return [{"command_id": c_id, "command_name": f"Command {c_id}", "command_type": "button"} for c_id in command_ids]
+
+            _LOGGER.debug("Command labels downloaded successfully (%d bytes)", len(text))
+
+            # Step 5: Parse command labels
+            commands = self._parser.parse_command_labels(text, command_ids)
+
+            if commands:
+                _LOGGER.debug("Parsed %d command labels", len(commands))
+                return commands
+            else:
+                _LOGGER.warning("Failed to parse command labels, using IDs only")
+                return [{"command_id": c_id, "command_name": f"Command {c_id}", "command_type": "button"} for c_id in command_ids]
+
+        except Exception as e:
+            _LOGGER.error("Error downloading commands configuration: %s", e)
+            return None
+
     async def _load_config_from_file(self) -> bool:
-        """Load zones, areas and macros configuration from JSON file."""
+        """Load zones, areas, macros and commands configuration from JSON file."""
         try:
             if not self._config_file_path or not os.path.exists(self._config_file_path):
                 return False
@@ -469,6 +613,10 @@ class CombivoxWebClient:
                 self._macros_config = config['macros']
                 _LOGGER.info("Loaded %d macros from cache file", len(self._macros_config))
 
+            if 'commands' in config:
+                self._commands_config = config['commands']
+                _LOGGER.info("Loaded %d commands from cache file", len(self._commands_config))
+
             return True
 
         except Exception as e:
@@ -476,7 +624,7 @@ class CombivoxWebClient:
             return False
 
     async def _save_config_to_file(self) -> bool:
-        """Save zones, areas and macros configuration to JSON file."""
+        """Save zones, areas, macros and commands configuration to JSON file."""
         try:
             if not self._config_file_path:
                 return False
@@ -488,6 +636,7 @@ class CombivoxWebClient:
                 "zones": self._zones_config,
                 "areas": self._areas_config,
                 "macros": self._macros_config,
+                "commands": self._commands_config,
             }
 
             import asyncio
@@ -1007,6 +1156,65 @@ class CombivoxWebClient:
             _LOGGER.error("Execute macro error: %s", e)
             return False
 
+    async def execute_command(self, command_id: int, activate: bool = True) -> bool:
+        """
+        Execute a command (button or switch).
+
+        Sends a POST command to execCmd.xml.
+        Payload format: nCmd=command_id&idc=49&val=7 (activate) or val=0 (deactivate)
+
+        TODO: Add code parameter in payload like macros (currently no code required)
+
+        Args:
+            command_id: Command ID
+            activate: True to activate (val=7), False to deactivate (val=0, for switches)
+
+        Returns:
+            True if command executed successfully
+        """
+        try:
+            # Reauthenticate if not authenticated
+            if not self._auth.is_authenticated():
+                _LOGGER.warning("Not authenticated, attempting reauthentication...")
+                if not await self._auth.authenticate():
+                    _LOGGER.error("Reauthentication failed")
+                    return False
+                _LOGGER.info("Reauthentication successful")
+
+            session = self._auth.get_session()
+            headers = {}
+            cookie = self._auth.get_cookie()
+            if cookie:
+                headers["Cookie"] = cookie
+            headers["Referer"] = f"{self.base_url}/index.htm?id=6"
+
+            # val=7 to activate, val=0 to deactivate
+            val = 7 if activate else 0
+            url = f"{self.base_url}{EXECCMD_URL}"
+            payload = f"nCmd={command_id}&idc=49&val={val}"
+
+            action = "activate" if activate else "deactivate"
+            _LOGGER.debug("Execute command %d (%s): URL=%s, payload=%s",
+                         command_id, action, url, payload)
+
+            async with session.post(url, headers=headers, data=payload, timeout=self.timeout) as response:
+                response_text = await response.text()
+                _LOGGER.debug("Response: status=%d, body=%s",
+                             response.status, response_text[:200] if response_text else "None")
+
+                if response.status == 200:
+                    # TODO: Parse response to verify success (currently no response format known)
+                    _LOGGER.debug("Command %d (%s) executed successfully", command_id, action)
+                    return True
+                else:
+                    _LOGGER.error("Command failed: HTTP %d, response=%s, payload=%s",
+                                response.status, response_text[:200] if response_text else "None", payload)
+                    return False
+
+        except Exception as e:
+            _LOGGER.error("Execute command error: %s", e)
+            return False
+
     def get_zones_config(self) -> List[Dict[str, Any]]:
         """Return the zones configuration."""
         return self._zones_config
@@ -1018,6 +1226,10 @@ class CombivoxWebClient:
     def get_macros_config(self) -> List[Dict[str, Any]]:
         """Return the macros (scenarios) configuration."""
         return self._macros_config
+
+    def get_commands_config(self) -> List[Dict[str, Any]]:
+        """Return the commands configuration."""
+        return self._commands_config
 
     def get_device_info(self) -> Optional[Dict[str, Any]]:
         """Return the device info."""
