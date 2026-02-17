@@ -38,6 +38,9 @@ async def async_setup_entry(
     # Get macros configuration
     macros_config = client.get_macros_config()
 
+    # Get commands configuration
+    commands_config = client.get_commands_config()
+
     entities = []
 
     # Create a button for each zone that has a name
@@ -74,6 +77,29 @@ async def async_setup_entry(
                     macro_name
                 ))
 
+    _LOGGER.info("Adding %d macro (scenario) buttons", len(macros_config) if macros_config else 0)
+
+    # Create a button for each command of type "button" (impulsivo)
+    command_buttons_count = 0
+    if commands_config:
+        for command in commands_config:
+            command_name = command.get("command_name")
+            command_id = command.get("command_id")
+            command_type = command.get("command_type")
+
+            # Only create buttons for commands with type "button"
+            if command_name and command_type == "button":
+                entities.append(CombivoxCommandButton(
+                    coordinator,
+                    client,
+                    device_info,
+                    command_id,
+                    command_name
+                ))
+                command_buttons_count += 1
+
+    _LOGGER.info("Adding %d command buttons", command_buttons_count)
+
     # Add clear alarm memory button
     entities.append(CombivoxClearAlarmMemoryButton(
         coordinator,
@@ -81,7 +107,6 @@ async def async_setup_entry(
         device_info
     ))
 
-    _LOGGER.info("Adding %d macro (scenario) buttons", len(macros_config) if macros_config else 0)
     _LOGGER.info("Adding %d total buttons", len(entities))
 
     async_add_entities(entities, update_before_add=True)
@@ -208,6 +233,61 @@ class CombivoxMacroButton(CoordinatorEntity, ButtonEntity):
             _LOGGER.info("Macro %d (%s) executed successfully", self.macro_id, self.macro_name)
         else:
             _LOGGER.error("Failed to execute macro %d (%s)", self.macro_id, self.macro_name)
+
+
+class CombivoxCommandButton(CoordinatorEntity, ButtonEntity):
+    """Button for executing commands (type=button, impulsivo)."""
+
+    def __init__(
+        self,
+        coordinator: CombivoxDataUpdateCoordinator,
+        client: CombivoxWebClient,
+        device_info: Dict[str, Any],
+        command_id: int,
+        command_name: str
+    ):
+        """Initialize the command button."""
+        super().__init__(coordinator)
+        self.coordinator = coordinator
+        self.client = client
+        self.command_id = command_id
+        self.command_name = command_name
+
+        # Create unique ID based on command ID
+        self._attr_unique_id = f"combivox_command_{command_id}"
+        self._attr_name = command_name
+        self._attr_has_entity_name = True
+        self._attr_device_info = device_info
+        self._attr_entity_category = EntityCategory.CONFIG
+
+        # Set icon for command button
+        self._attr_icon = "mdi:gesture-tap-button"
+
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to hass."""
+        await super().async_added_to_hass()
+        # Register update listener
+        if self.coordinator:
+            self.coordinator.async_add_listener(self._handle_coordinator_update)
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return not self.coordinator._panel_unavailable
+
+    async def async_press(self, **kwargs: Any) -> None:
+        """Press the button - execute the command (activate)."""
+        _LOGGER.info("Executing command %d (%s)", self.command_id, self.command_name)
+
+        success = await self.client.execute_command(self.command_id, activate=True)
+        if success:
+            _LOGGER.info("Command %d (%s) executed successfully", self.command_id, self.command_name)
+        else:
+            _LOGGER.error("Failed to execute command %d (%s)", self.command_id, self.command_name)
 
 
 class CombivoxClearAlarmMemoryButton(CoordinatorEntity, ButtonEntity):
