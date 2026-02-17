@@ -76,8 +76,8 @@ class CombivoxCommandSwitch(CoordinatorEntity, SwitchEntity):
         self.command_id = command_id
         self.command_name = command_name
 
-        # Optimistic state (will be updated when we parse the XML byte)
-        # TODO: Parse switch state from XML byte to track actual state
+        # State is read from coordinator.data, not optimistic
+        # Initialized as False, will be updated from actual panel state
         self._attr_is_on = False
 
         # Create unique ID based on command ID
@@ -99,10 +99,12 @@ class CombivoxCommandSwitch(CoordinatorEntity, SwitchEntity):
 
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        # TODO: Parse switch state from XML byte to track actual state
-        # The XML contains the state of each switch (on/off) in a specific byte position
-        # Need to identify which byte contains the switch states and parse it
-        # For now, using optimistic mode (state updates only when we change it)
+        # Update switch state from coordinator data
+        if self.coordinator.data:
+            command_states = self.coordinator.data.get("command_states", {})
+            # Get state for this command (False if not in dict = command is off)
+            self._attr_is_on = command_states.get(self.command_id, False)
+
         self.async_write_ha_state()
 
     @property

@@ -155,6 +155,54 @@ def parse_anomalies(si_value, marker_pos):
     except Exception as e:
         return {'error': str(e)}
 
+def parse_command_states(si_value):
+    """
+    Parse command switch states from end of string.
+
+    Position: 520 chars (260 bytes) from END of string, then 10 bytes (20 hex chars)
+    Each byte = 8 commands (1 bit per command), max 80 commands with 10 bytes
+
+    Mapping: Byte X, bit Y = Command (X*8 + Y + 1)
+    Example: Byte 0, bit 0 = Command 1, Byte 8, bit 5 = Command 70
+    """
+    if len(si_value) < 540:  # Need at least 520 + 20 characters
+        return None
+
+    try:
+        # Start 520 chars from end
+        pos_start = len(si_value) - 520
+        pos_end = pos_start + 20  # 10 bytes = 20 hex chars
+        command_states_hex = si_value[pos_start:pos_end]
+
+        # Parse each byte
+        command_states = {}
+        for byte_idx in range(10):  # 10 bytes
+            if byte_idx * 2 + 2 <= len(command_states_hex):
+                byte_hex = command_states_hex[byte_idx * 2:byte_idx * 2 + 2]
+                byte_val = int(byte_hex, 16)
+
+                # Check each bit
+                for bit_idx in range(8):
+                    command_id = byte_idx * 8 + bit_idx + 1  # Convert to one-based ID
+                    is_on = (byte_val >> bit_idx) & 1
+
+                    if is_on:
+                        command_states[command_id] = {
+                            'byte_idx': byte_idx,
+                            'bit_idx': bit_idx,
+                            'byte_hex': byte_hex,
+                            'byte_val': byte_val
+                        }
+
+        return {
+            'hex': command_states_hex,
+            'pos_start': pos_start,
+            'pos_end': pos_end,
+            'states': command_states
+        }
+    except Exception as e:
+        return {'error': str(e)}
+
 def print_analysis(si_value, prev_si):
     """Print detailed analysis with change highlighting"""
     timestamp = datetime.now().strftime("%H:%M:%S")
@@ -386,6 +434,29 @@ def print_analysis(si_value, prev_si):
                 print()
         else:
             print(f"  No alarm memory")
+
+    # ========== COMMAND STATES ==========
+    print(f"\n{Colors.GREEN}COMMAND STATES{Colors.RESET}", end=" ")
+    command_data = parse_command_states(si_value)
+    if command_data and 'error' not in command_data:
+        print(f"(pos {command_data['pos_start']}-{command_data['pos_end']}):")
+        print(f"  Hex: {command_data['hex']}")
+        print(f"  Length: 20 chars = 10 bytes (80 commands max)")
+
+        if command_data['states']:
+            print(f"  {Colors.YELLOW}Commands ON{Colors.RESET} ({len(command_data['states'])} total):")
+            # Show first 20 commands with details
+            sorted_commands = sorted(command_data['states'].items())
+            for cmd_id, cmd_info in sorted_commands[:20]:
+                byte_bin = format(cmd_info['byte_val'], '08b')
+                print(f"    Command {cmd_id}: Byte {cmd_info['byte_idx']}, "
+                      f"Bit {cmd_info['bit_idx']}, Hex {cmd_info['byte_hex']} (0b{byte_bin})")
+            if len(sorted_commands) > 20:
+                print(f"    ... and {len(sorted_commands) - 20} more")
+        else:
+            print(f"  All commands OFF")
+    else:
+        print(f"{Colors.YELLOW}Not available{Colors.RESET}")
 
 def main():
     """Main function"""

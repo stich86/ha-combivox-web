@@ -474,6 +474,47 @@ class CombivoxXMLParser:
                             zone_names.append(f"Zone {zid}")
                 _LOGGER.debug("Alarm memory: zones %s - %s", zones_with_alarm, zone_names)
 
+            # Parse command switch states from end of string
+            # Structure: 520 chars (260 bytes) from end, then 10 bytes (20 hex chars) of command states
+            # Each byte represents 8 commands (1 bit per command), max 80 commands with 10 bytes
+            command_states = {}
+            if len(si) >= 520:  # Need at least 520 characters
+                try:
+                    # Get the 10 bytes of command states (20 hex characters)
+                    # They start 520 chars from end, so from position len(si)-520
+                    pos_start = len(si) - 520
+                    pos_end = pos_start + 20
+                    command_states_hex = si[pos_start:pos_end]
+
+                    _LOGGER.debug("Command states hex (20 chars): %s", command_states_hex)
+                    _LOGGER.debug("Command states position: %d to %d (total len=%d)", pos_start, pos_end, len(si))
+
+                    # Parse each byte (2 hex chars) and extract bit states
+                    for byte_idx in range(10):  # 10 bytes
+                        if byte_idx * 2 + 2 <= len(command_states_hex):
+                            byte_hex = command_states_hex[byte_idx * 2:byte_idx * 2 + 2]
+                            byte_val = int(byte_hex, 16)
+
+                            # Check each bit (8 commands per byte)
+                            for bit_idx in range(8):
+                                # Commands are zero-based in the panel
+                                # Byte 0, bit 0 = Command 1, Byte 0, bit 1 = Command 2, etc.
+                                command_id = byte_idx * 8 + bit_idx + 1  # Convert to one-based ID
+                                is_on = (byte_val >> bit_idx) & 1  # Check if bit is set
+
+                                if is_on:
+                                    command_states[command_id] = True
+                                    _LOGGER.debug("Command %d is ON (byte %d, bit %d, hex=%s)",
+                                                 command_id, byte_idx, bit_idx, byte_hex)
+
+                    _LOGGER.debug("Parsed %d command switches in ON state: %s",
+                                 len(command_states), list(command_states.keys()))
+                except (ValueError, IndexError) as e:
+                    _LOGGER.warning("Failed to parse command states: %s", e)
+                    command_states = {}
+            else:
+                _LOGGER.debug("Buffer too short for command states parsing (len=%d)", len(si))
+
             return {
                 "datetime": datetime_obj,
                 "gsm": gsm_data,
@@ -484,7 +525,8 @@ class CombivoxXMLParser:
                 "areas": areas,
                 "zones": zones,
                 "alarm_state": alarm_state,
-                "alarm_hex": alarm_hex
+                "alarm_hex": alarm_hex,
+                "command_states": command_states
             }
 
         except Exception as e:
