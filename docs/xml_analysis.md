@@ -286,6 +286,34 @@ Each byte contains **8 zones** (1 bit per zone):
 
 **Position:** Calculated from the END of the string, backward (not from marker)!
 
+### Command States (End - 540 to End - 520, 10 bytes from END)
+
+Command switch states for bistable commands (latching switches). Each byte contains **8 commands** (1 bit per command):
+
+- **`0`** = Command OFF
+- **`1`** = Command ON
+
+**Format:**
+- Byte 0: Commands 1-8
+- Byte 1: Commands 9-16
+- Byte 2: Commands 17-24
+- ...
+- Byte 9: Commands 73-80
+
+**Maximum:** 80 commands (10 bytes × 8 commands per byte)
+
+**Position:** 520 characters (260 bytes) from the END of the string, going backward
+
+**Note:** For Amica 324 panels, support extends to 144 commands (18 bytes), but this integration currently supports up to 80 commands.
+
+**Command Mapping:**
+- Command ID = (Byte Index × 8) + Bit Index + 1
+- Example: Byte 8, Bit 5 = Command 70 (8×8+5+1 = 70)
+
+**Bit Example:**
+- `20` (hex) = `00100000` (binary) = Bit 5 set → Command 70 is ON
+- `01` (hex) = `00000001` (binary) = Bit 0 set → Command 1 is ON
+
 ## Extended GSM Information (AmicaWeb Plus/SmartWeb Only)
 
 On AmicaWeb Plus and SmartWeb interfaces, **16 additional bytes** are present between the SIM expiry date and the `FFFFFF` marker containing the operator name encoded in hexadecimal.
@@ -361,6 +389,30 @@ for i in range(8):
     print(f"Area {i+1}: {'Armed' if is_armed else 'Disarmed'}")
 ```
 
+### Parsing Command States
+
+```python
+# Command states are at End - 520 chars (not from marker!)
+if len(si_value) >= 540:  # Need at least 520 + 20 chars
+    pos_start = len(si_value) - 520  # 520 chars from END
+    pos_end = pos_start + 20  # 10 bytes = 20 hex chars
+    command_states_hex = si_value[pos_start:pos_end]
+
+    # Each byte represents 8 commands (1 bit per command)
+    command_states = {}
+    for byte_idx in range(10):  # 10 bytes = 80 commands max
+        byte_hex = command_states_hex[byte_idx*2:byte_idx*2+2]
+        byte_val = int(byte_hex, 16)
+
+        for bit_idx in range(8):
+            command_id = byte_idx * 8 + bit_idx + 1  # 1-based ID
+            is_on = bool(byte_val & (1 << bit_idx))
+
+            if is_on:
+                command_states[command_id] = True
+                print(f"Command {command_id}: ON (Byte {byte_idx}, Bit {bit_idx})")
+```
+
 ## Unknown Sections
 
 The following sections are not yet fully understood:
@@ -422,6 +474,7 @@ This script:
 - Parses all known sections
 - Shows positions relative to the marker
 - Displays armed areas, open zones, excluded zones, alarm memory
+- Shows command switch states (bistable commands) with ON/OFF status
 
 ⚠️ **Important:** This script does NOT support authentication. You must disable the PIN code requirement in your panel's web interface to use it.
 
