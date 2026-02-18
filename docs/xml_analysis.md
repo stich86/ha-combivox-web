@@ -14,10 +14,11 @@ The `<si>` field in `status9.xml` contains multiple pieces of data encoded as a 
 - Byte 9 = 10th byte
 - etc.
 
-⚠️ **Important:** The `FFFFFF` marker position is **dynamic** and varies depending on:
-- Whether the panel has 16 extra bytes for operator name (AmicaWeb Plus/SmartWeb)
-- Panel configuration
-- Other factors
+⚠️ **Important:** The `FFFFFF` marker position is **fixed** at a specific offset from the end of the string:
+- The marker (including validation bytes) is always at **1130 characters from the end**
+- This position is consistent across all panel configurations
+- At 1124 chars from end: end of "extra characters" section
+- FFFFFF marker starts **6 characters BEFORE** that point (at 1130 chars from end)
 
 Therefore, positions after the first bytes are expressed as **offsets from the marker**.
 
@@ -67,15 +68,32 @@ On **AmicaWeb Plus** and **SmartWeb** interfaces only:
 
 ## Dynamic Marker
 
-The `FFFFFF` marker (3 bytes = 6 hex characters) is always followed by `0000` or `0101`.
+The `FFFFFF` marker (3 bytes = 6 hex characters) is always followed by validation bytes (`0000`, `0101`, `F700`, or others).
 
-**Finding the marker:** Search for `FFFFFF` (6 chars) followed by `0000` or `0101`.
+**Finding the marker:**
+
+**Previous Implementation:** Search for `FFFFFF` (6 chars) followed by `0000` or `0101`.
+
+**Current Implementation:** Use **fixed offset from end** - more reliable:
+- Start from the **end of the string**
+- Go back **1130 characters** (565 bytes)
+- This position contains the FFFFFF marker
+- Validate that FFFFFF is at expected position (optional, for debugging)
 
 **Example:**
 ```
-...FF|FFFFFF|0101|...
-     ^marker  ^suffix
+String end → 1124 chars → FFFFFF marker (at 1130 chars from end)
+                              ↑
+                           marker_pos
 ```
+
+**Position Calculation:**
+```python
+string_length = len(si)  # Total length of <si> string
+marker_pos = string_length - 1130  # Fixed position from end
+```
+
+This approach is more reliable than dynamic searching because it doesn't depend on the variable section length or validation bytes.
 
 ## Data Relative to Marker (Byte Offsets)
 
@@ -405,16 +423,41 @@ When there is a power loss (to be confirmed):
 
 ### Finding the Marker in Code
 
+**Current Implementation (Fixed Offset from End):**
+
 ```python
-# Search for FFFFFF (3 bytes) followed by 0000 or 0101
-# si_value is a hex string (2 chars per byte)
-for i in range(len(si_value) - 10):
-    if si_value[i:i+6] == "FFFFFF":  # 3 bytes = 6 hex chars
-        next_bytes = si_value[i+6:i+10]
-        if next_bytes in ["0000", "0101"]:
-            marker_pos = i  # Position in hex chars (divide by 2 for bytes)
+# Calculate marker position using fixed offset from end
+# At 1124 chars from end: end of "extra characters" section
+# FFFFFF marker starts 6 characters BEFORE that point
+MARKER_OFFSET_FROM_END = 1130  # 1124 + 6 (marker itself)
+
+if len(si) >= MARKER_OFFSET_FROM_END:
+    marker_pos = len(si) - MARKER_OFFSET_FROM_END
+
+    # Optional validation: verify FFFFFF is at expected position
+    if si[marker_pos:marker_pos + 6] != "FFFFFF":
+        _LOGGER.warning("Expected FFFFFF at position %d", marker_pos)
+else:
+    _LOGGER.error("String too short for marker position")
+```
+
+**Previous Implementation (Dynamic Search):**
+
+```python
+# Search for FFFFFF (3 bytes) followed by 0000, 0101, or F700
+for i in range(len(si) - 10):
+    if si[i:i+6] == "FFFFFF":  # 3 bytes = 6 hex chars
+        next_bytes = si[i+6:i+10]
+        if next_bytes in ["0000", "0101", "F700"]:
+            marker_pos = i
             break
 ```
+
+**Why Fixed Offset is Better:**
+- ✅ No loop through string (faster)
+- ✅ No dependency on validation bytes
+- ✅ Consistent position across all configurations
+- ✅ Simpler and more maintainable code
 
 ### Parsing Zone Data
 
