@@ -59,7 +59,7 @@ By using this integration, you agree that:
 - 📜 You comply with your alarm panel's warranty and terms of service
 - 🎯 You accept full responsibility for any consequences
 
-This project is intended for **educational purposes** and **personal use only**. 📚
+This project is intended for **educational purposes** and **personal use only**.
 
 ## Requirements
 
@@ -69,7 +69,7 @@ This project is intended for **educational purposes** and **personal use only**.
 
 ## Installation
 
-### Method 1: HACS (Recommended) 📦
+### Method 1: HACS (Recommended)
 
 1. Open HACS in Home Assistant
 2. Go to "Integrations"
@@ -80,7 +80,7 @@ This project is intended for **educational purposes** and **personal use only**.
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=combivox_web)
 
-### Method 2: Manual Installation 💻
+### Method 2: Manual Installation
 
 1. Using the tool of choice, open the directory (folder) for your HA configuration (where you find `configuration.yaml`)
 2. If you do not have a `custom_components` directory (folder) there, create it
@@ -91,9 +91,9 @@ This project is intended for **educational purposes** and **personal use only**.
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=combivox_web)
 
-## Configuration ⚙️
+## Configuration
 
-### Initial Setup ➕
+### Initial Setup
 
 After installation, add the integration:
 
@@ -154,7 +154,7 @@ For each arm type (Away/Home/Night):
 
 **Note**: Areas have priority over scenarios when both are configured.
 
-## Documentation 📚
+## Documentation
 
 For detailed documentation, see:
 
@@ -165,7 +165,7 @@ For detailed documentation, see:
 - 🔧 **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 - 📋 **[Supported Models](docs/supported-models.md)** - Compatibility table and reporting
 
-## Download Diagnostics 📊
+## Download Diagnostics
 
 The integration supports downloading diagnostic data:
 
@@ -176,7 +176,7 @@ The integration supports downloading diagnostic data:
 
 A JSON file will be downloaded with comprehensive diagnostic information (connection, state, configuration, device info, live panel data).
 
-## Support 💬
+## Support
 
 For issues, questions, or contributions:
 - 🐛 **GitHub Issues**: [Create an issue](https://github.com/stich86/ha-combivox-web/issues)

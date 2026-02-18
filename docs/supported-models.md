@@ -20,7 +20,11 @@ The integration should work with any Combivox panel supporting:
 - **SmartWeb** web interface
 - HTTP/XML communication protocol
 - Status polling via `/status9.xml`
-- Command execution via `/insAree.xml`, `/execBypass.xml`, `/execChangeImp.xml`
+- Configuration downloads:
+  - `/labelProgStato.xml` (zones/areas)
+  - `/numMacro.xml` → `/labelMacro.xml` (macros/scenarios)
+  - `/numComandiProg.xml` → `/labelComandi.xml` (commands)
+- Command execution via `/insAree.xml`, `/execBypass.xml`, `/execChangeImp.xml`, `/execDelMem.xml`
 
 ### Potentially Compatible Models
 
@@ -80,6 +84,7 @@ When reporting your model, please be thorough:
 - 🔧 Panel firmware version
 - 🌐 Web interface firmware version
 - 📊 Number of zones/areas/macros configured
+- 🔌 Number of commands/domotic modules configured
 - ⚠️ Any bugs or unexpected behavior discovered
 - 💡 Suggestions for improvements
 
@@ -108,6 +113,8 @@ When reporting your model, please be thorough:
    - [ ] Macros/scenarios work
    - [ ] GSM sensors work (if applicable)
    - [ ] Clear alarm memory works
+   - [ ] Command switches work (standard commands 1-80)
+   - [ ] Domotic module switches work (commands 145-208)
 
 ## Known Issues
 
@@ -116,6 +123,7 @@ When reporting your model, please be thorough:
 - **AmicaWeb**: Original web interface, fully supported
 - **AmicaWeb Plus**: Enhanced version, fully supported
 - **SmartWeb**: Newer web interface, should work but needs testing
+- **SmartWeb Video Plus**: Not compatible (uses different communication method)
 
 ### GSM Functionality
 
@@ -129,6 +137,37 @@ GSM sensors may show "unknown" if:
 - SIM card is not inserted
 - No network subscription
 
+### Command Switches and Domotic Modules
+
+The integration creates switch entities for controlling panel outputs and home automation modules:
+
+**Command Download Process:**
+- Commands are downloaded from panel during initial connection
+- GET `/reqProg.cgi?id=4&idc=49` to trigger command data population
+- GET `/numComandiProg.xml` to get command IDs (e.g., [1, 2, 3, 5, 8, ...])
+- POST with payload `comandi=id1;id2;id3;...;` to `/labelComandi.xml` for labels
+- Response format: hex-encoded pipe-separated strings (e.g., `4C7563692053616c61~0|...`)
+- Hex part before tilde (~) is decoded to UTF-8 command name
+- Only commands with names are created as switches
+
+**Standard Commands (IDs 1-80):**
+- Panel outputs with bitmap-based state tracking
+- State parsed from 10 bytes in status XML (520 chars from end)
+- Each command uses 1 bit in bitmap (0 = OFF, 1 = ON)
+- Tested on: Amica 64 GSM (AmicaWeb/AmicaWeb Plus), Amica 64 LTE (AmicaWeb Plus)
+
+**Domotic Modules (IDs 145-208):**
+- Home automation modules with 2 independent channels each
+- State parsed from 64 bytes in status XML (484 chars from end)
+- Each channel uses 1 byte (2 hex chars): `00` = OFF, `07` = ON
+- Each module creates 2 command switches (e.g., module 1 → commands 145-146)
+- Possible module states: `0000` (both OFF), `0700` (A ON, B OFF), `0007` (A OFF, B ON), `0707` (both ON)
+- Currently supports up to 32 modules (64 channels total)
+- First command ID configurable (default 145, adjust for different panels)
+- **Not tested yet** - needs testing with actual domotic modules
+
+> **Note:** Command switch type (impulsivo/bistabile - impulse/bistable) from panel configuration only affects web UI display, not actual functionality. All commands are implemented as switches with real-time state tracking from panel status XML.
+
 ## Future Testing Needed
 
 The following scenarios need testing:
@@ -137,6 +176,7 @@ The following scenarios need testing:
    - Panels with 32+ zones
    - All 8 areas configured
    - Multiple macros/scenarios
+   - Multiple domotic modules (32+)
 
 2. **Edge cases:**
    - Zones with special characters in names
@@ -148,6 +188,12 @@ The following scenarios need testing:
    - Intermittent connectivity
    - Panel behind VPN
    - Remote panel over internet
+
+4. **Domotic modules:**
+   - Testing with actual hardware modules (commands 145-208)
+   - Different domotic module configurations
+   - Channel state switching (A/B/both)
+   - Confirm first command ID for different panel models
 
 ## Acknowledgments
 
