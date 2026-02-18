@@ -92,7 +92,10 @@
           "ok": "OK",
           "searching": "In ricerca",
           "no_sim": "Nessuna SIM",
-          "unknown": "Sconosciuto"
+          "unknown": "Sconosciuto",
+          "4g": "Registrato (4G)",
+          "3g": "Registrato (3G)",
+          "2g": "Registrato (2G)"
         }
       },
       "combivox_gsm_operator": {
