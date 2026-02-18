@@ -487,9 +487,10 @@ class CombivoxXMLParser:
                     command_states_hex = si[pos_start:pos_end]
 
                     _LOGGER.debug("Command states hex (20 chars): %s", command_states_hex)
-                    _LOGGER.debug("Command states position: %d to %d (total len=%d)", pos_start, pos_end, len(si))
+                    _LOGGER.debug("Command states position: %d to %d (section len=%d)", pos_start, pos_end, pos_end - pos_start)
 
                     # Parse each byte (2 hex chars) and extract bit states
+                    active_commands = []
                     for byte_idx in range(10):  # 10 bytes
                         if byte_idx * 2 + 2 <= len(command_states_hex):
                             byte_hex = command_states_hex[byte_idx * 2:byte_idx * 2 + 2]
@@ -504,16 +505,88 @@ class CombivoxXMLParser:
 
                                 if is_on:
                                     command_states[command_id] = True
-                                    _LOGGER.debug("Command %d is ON (byte %d, bit %d, hex=%s)",
-                                                 command_id, byte_idx, bit_idx, byte_hex)
+                                    active_commands.append(command_id)
 
-                    _LOGGER.debug("Parsed %d command switches in ON state: %s",
-                                 len(command_states), list(command_states.keys()))
+                    # Log in compressed format (like domotic modules)
+                    if active_commands:
+                        _LOGGER.debug("Active commands: %s", active_commands)
+                        _LOGGER.debug("Parsed 10 command bytes with %d active (commands 1-80)",
+                                     len(active_commands))
+                    else:
+                        _LOGGER.debug("Parsed 10 command bytes, all OFF (commands 1-80)")
                 except (ValueError, IndexError) as e:
                     _LOGGER.warning("Failed to parse command states: %s", e)
                     command_states = {}
             else:
                 _LOGGER.debug("Buffer too short for command states parsing (len=%d)", len(si))
+
+            # Parse domotic module states (commands > 80) from end of string
+            # Structure: 484 chars from end, then 64 bytes (128 hex chars) of domotic module states
+            # Each MODULE has 2 CHANNELS, using 2 bytes (4 hex chars total)
+            # Byte 0 = Channel A, Byte 1 = Channel B
+            # Each channel: 00 = OFF, 07 = ON
+            # Each module generates 2 commands (e.g., module 0 = commands 81-82)
+            if len(si) >= 484:  # Need at least 484 characters
+                try:
+                    # Get the 64 bytes (128 hex characters) of domotic module states
+                    # They start 484 chars from end, so from position len(si)-484
+                    pos_start = len(si) - 484
+                    pos_end = pos_start + 128  # 64 bytes = 128 hex chars
+                    domotic_states_hex = si[pos_start:pos_end]
+
+                    _LOGGER.debug("Domotic modules hex (128 chars): %s", domotic_states_hex)
+                    _LOGGER.debug("Domotic modules position: %d to %d (section len=%d)", pos_start, pos_end, pos_end - pos_start)
+
+                    # Import constants
+                    from .const import DOMOTIC_MODULE_HEX_TO_STATE, DOMOTIC_MODULE_FIRST_COMMAND_ID
+
+                    # Track active modules for compressed logging
+                    active_modules = []
+
+                    # Parse each module (2 bytes = 4 hex chars per module)
+                    num_modules = min(len(domotic_states_hex) // 4, 32)  # Max 32 modules
+                    for module_idx in range(num_modules):
+                        # Extract 2 bytes (4 hex chars) for this module
+                        module_hex = domotic_states_hex[module_idx * 4:module_idx * 4 + 4]
+
+                        # Each module has 2 channels, each is 1 byte (2 hex chars)
+                        channel_a_hex = module_hex[0:2]  # First byte = channel A
+                        channel_b_hex = module_hex[2:4]  # Second byte = channel B
+
+                        # Calculate command IDs using configurable first ID
+                        # Module 1 = commands FIRST_ID,FIRST_ID+1, module 2 = FIRST_ID+2,FIRST_ID+3, etc.
+                        command_id_a = DOMOTIC_MODULE_FIRST_COMMAND_ID + module_idx * 2     # Channel A
+                        command_id_b = DOMOTIC_MODULE_FIRST_COMMAND_ID + module_idx * 2 + 1 # Channel B
+
+                        # Parse channel A
+                        state_a = DOMOTIC_MODULE_HEX_TO_STATE.get(channel_a_hex, "unknown")
+                        command_states[command_id_a] = (state_a == "on")
+
+                        # Parse channel B
+                        state_b = DOMOTIC_MODULE_HEX_TO_STATE.get(channel_b_hex, "unknown")
+                        command_states[command_id_b] = (state_b == "on")
+
+                        # Track active modules (at least one channel is ON or has non-standard state)
+                        if module_hex != "0000":
+                            active_modules.append((module_idx + 1, command_id_a, state_a, channel_a_hex,
+                                                  command_id_b, state_b, channel_b_hex))
+
+                    # Log only active modules
+                    if active_modules:
+                        for mod_num, cmd_a, state_a, hex_a, cmd_b, state_b, hex_b in active_modules:
+                            _LOGGER.debug("Domotic Module %d: Command %d=%s (%s), Command %d=%s (%s)",
+                                         mod_num, cmd_a, state_a, hex_a, cmd_b, state_b, hex_b)
+                        _LOGGER.debug("Parsed %d domotic modules with %d active (commands %d-%d)",
+                                     num_modules, len(active_modules), DOMOTIC_MODULE_FIRST_COMMAND_ID,
+                                     DOMOTIC_MODULE_FIRST_COMMAND_ID + num_modules * 2 - 1)
+                    else:
+                        _LOGGER.debug("Parsed %d domotic modules, all OFF (commands %d-%d)",
+                                     num_modules, DOMOTIC_MODULE_FIRST_COMMAND_ID,
+                                     DOMOTIC_MODULE_FIRST_COMMAND_ID + num_modules * 2 - 1)
+                except (ValueError, IndexError) as e:
+                    _LOGGER.warning("Failed to parse domotic module states: %s", e)
+            else:
+                _LOGGER.debug("Buffer too short for domotic module parsing (len=%d)", len(si))
 
             return {
                 "datetime": datetime_obj,
@@ -813,21 +886,8 @@ class CombivoxXMLParser:
                     # Decode hex to string
                     name = bytes.fromhex(hex_name).decode('utf-8')
 
-                    # Parse command type: 2 = impulsivo (button), 6 = bistabile (switch)
-                    command_type = "button"  # default
-                    if type_str:
-                        try:
-                            type_val = int(type_str)
-                            if type_val == 6:
-                                command_type = "switch"
-                            elif type_val == 2:
-                                command_type = "button"
-                            else:
-                                _LOGGER.debug("Unknown command type %d for command %d, defaulting to button",
-                                             type_val, command_id)
-                        except ValueError:
-                            _LOGGER.debug("Invalid command type '%s' for command %d, defaulting to button",
-                                         type_str, command_id)
+                    # All commands are switches (the type after tilde is only for web UI display)
+                    command_type = "switch"
 
                     commands.append({
                         "command_id": command_id,

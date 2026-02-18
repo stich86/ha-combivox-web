@@ -155,6 +155,70 @@ def parse_anomalies(si_value, marker_pos):
     except Exception as e:
         return {'error': str(e)}
 
+def parse_domotic_modules(si_value):
+    """
+    Parse domotic module states (commands > 80) from end of string.
+
+    Position: 484 chars from END of string, then 64 bytes (128 hex chars)
+    Each MODULE has 2 CHANNELS, using 2 bytes (4 hex chars total)
+    Byte 0 = Channel A, Byte 1 = Channel B
+    Each channel: 00 = OFF, 07 = ON
+    Each module generates 2 commands (e.g., module 1 = commands 145-146)
+    """
+    if len(si_value) < 484:  # Need at least 484 characters
+        return None
+
+    try:
+        # Start 484 chars from end
+        pos_start = len(si_value) - 484
+        pos_end = pos_start + 128  # 64 bytes = 128 hex chars
+        domotic_hex = si_value[pos_start:pos_end]
+
+        # State mapping
+        DOMOTIC_MODULE_HEX_TO_STATE = {
+            "00": "off",
+            "07": "on",
+        }
+
+        # Parse each module (2 bytes = 4 hex chars per module)
+        active_modules = []
+        num_modules = min(len(domotic_hex) // 4, 32)  # Max 32 modules
+
+        for module_idx in range(num_modules):
+            module_hex = domotic_hex[module_idx * 4:module_idx * 4 + 4]
+            channel_a_hex = module_hex[0:2]  # First byte
+            channel_b_hex = module_hex[2:4]  # Second byte
+
+            # Calculate command IDs (starting from 145)
+            command_id_a = 145 + module_idx * 2
+            command_id_b = 145 + module_idx * 2 + 1
+
+            # Parse states
+            state_a = DOMOTIC_MODULE_HEX_TO_STATE.get(channel_a_hex, "unknown")
+            state_b = DOMOTIC_MODULE_HEX_TO_STATE.get(channel_b_hex, "unknown")
+
+            # Track active modules (at least one channel is not OFF)
+            if module_hex != "0000":
+                active_modules.append({
+                    'module_num': module_idx + 1,
+                    'command_a': command_id_a,
+                    'state_a': state_a,
+                    'hex_a': channel_a_hex,
+                    'command_b': command_id_b,
+                    'state_b': state_b,
+                    'hex_b': channel_b_hex
+                })
+
+        return {
+            'hex': domotic_hex,
+            'pos_start': pos_start,
+            'pos_end': pos_end,
+            'num_modules': num_modules,
+            'active_modules': active_modules
+        }
+    except Exception as e:
+        return {'error': str(e)}
+
 def parse_command_states(si_value):
     """
     Parse command switch states from end of string.
@@ -455,6 +519,29 @@ def print_analysis(si_value, prev_si):
                 print(f"    ... and {len(sorted_commands) - 20} more")
         else:
             print(f"  All commands OFF")
+    else:
+        print(f"{Colors.YELLOW}Not available{Colors.RESET}")
+
+    # ========== DOMOTIC MODULES ==========
+    print(f"\n{Colors.GREEN}DOMOTIC MODULES{Colors.RESET}", end=" ")
+    domotic_data = parse_domotic_modules(si_value)
+    if domotic_data and 'error' not in domotic_data:
+        print(f"(pos {domotic_data['pos_start']}-{domotic_data['pos_end']}):")
+        print(f"  Hex: {domotic_data['hex']}")
+        print(f"  Length: 128 chars = 64 bytes (32 modules max, 2 channels each)")
+
+        if domotic_data['active_modules']:
+            print(f"  {Colors.YELLOW}Active modules{Colors.RESET} ({len(domotic_data['active_modules'])} total):")
+            for mod in domotic_data['active_modules'][:20]:
+                print(f"    Module {mod['module_num']}: "
+                      f"Command {mod['command_a']}={Colors.GREEN}{mod['state_a']}{Colors.RESET} ({mod['hex_a']}), "
+                      f"Command {mod['command_b']}={Colors.GREEN}{mod['state_b']}{Colors.RESET} ({mod['hex_b']})")
+            if len(domotic_data['active_modules']) > 20:
+                print(f"    ... and {len(domotic_data['active_modules']) - 20} more")
+            print(f"  Total modules parsed: {domotic_data['num_modules']} (commands 145-{145 + domotic_data['num_modules'] * 2 - 1})")
+        else:
+            print(f"  All modules OFF")
+            print(f"  Total modules parsed: {domotic_data['num_modules']} (commands 145-{145 + domotic_data['num_modules'] * 2 - 1})")
     else:
         print(f"{Colors.YELLOW}Not available{Colors.RESET}")
 
