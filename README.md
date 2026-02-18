@@ -40,7 +40,7 @@ Home Assistant integration for Combivox alarm panels (Amica/Elisa series) via Am
 ## Requirements
 
 - Home Assistant 2025.11 or later
-- Combivox alarm panel (Amica/Elisa series) with AmicaWeb/AmicaWeb Plus/SmartWeb module enabled (not tested with SmartWeb Video Plus)
+- Combivox alarm panel (Amica/Elisa series) with AmicaWeb/AmicaWeb Plus/SmartWeb module enabled (not compatible with SmartWeb Video Plus)
 - HTTP access to the alarm panel (default port 80)
 
 ## Installation
