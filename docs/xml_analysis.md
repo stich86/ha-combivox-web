@@ -142,6 +142,8 @@ AFTER the marker (going forward from FFFFFF):
 | 90th-173rd bytes | 84 bytes | ❓ Unknown data |
 | **174th byte** | 1 byte | **Anomalies** (00=OK, 40=GSM trouble, 01=Bus trouble) |
 | Last 40 bytes (from end) | 40 bytes | **Alarm Memory** (320 zones max, which zones have alarm) |
+| End - 540 to End - 520 | 20 bytes | **Command States** (commands 1-80, bitmask) |
+| End - 612 to End - 484 | 128 bytes | **Domotic Modules** (commands 145-208, 2 channels per module) |
 
 ## Code Tables
 
@@ -175,6 +177,11 @@ AFTER the marker (going forward from FFFFFF):
 | `00` | OK | GSM connected and working |
 | `04` | Searching | Searching for GSM network |
 | `05` | No SIM | No SIM card detected |
+| `08` | 2G | connected and registered in 2G |
+| `10` | 4G | connected and registered in 4G/LTE |
+| `18` | 4G | connected and registered in 4G/LTE |
+| `20` | 3G | connected and registered in 3G |
+| `20` | 3G | connected and registered in 3G |
 | Other | Unknown | Invalid status |
 
 ### Alarm State (marker - 16, 16 bytes BEFORE marker)
@@ -288,7 +295,7 @@ Each byte contains **8 zones** (1 bit per zone):
 
 ### Command States (End - 540 to End - 520, 10 bytes from END)
 
-Command switch states for bistable commands (latching switches). Each byte contains **8 commands** (1 bit per command):
+Command switch states. Each byte contains **8 commands** (1 bit per command):
 
 - **`0`** = Command OFF
 - **`1`** = Command ON
@@ -313,6 +320,58 @@ Command switch states for bistable commands (latching switches). Each byte conta
 **Bit Example:**
 - `20` (hex) = `00100000` (binary) = Bit 5 set → Command 70 is ON
 - `01` (hex) = `00000001` (binary) = Bit 0 set → Command 1 is ON
+
+### Domotic Modules (End - 612 to End - 484, 64 bytes from END)
+
+Domotic module states for home automation modules. Each module has **2 channels** (2 outputs), using **2 bytes per module** (4 hex characters):
+
+**Position:** 484 characters (242 bytes) from the END of the string, going backward
+
+**Structure:**
+- Total: 64 bytes (128 hex characters) = 32 modules max
+- Per module: 2 bytes (4 hex characters)
+  - Byte 0 (chars 0-1): Channel A state
+  - Byte 1 (chars 2-3): Channel B state
+
+**Channel States:**
+
+| Value | State | Description |
+|-------|-------|-------------|
+| `00` | OFF | Channel is OFF |
+| `07` | ON | Channel is ON |
+| Other | Unknown | Reserved for future use |
+
+**Module to Command Mapping:**
+
+Each module generates 2 separate commands (one per channel):
+
+| Module | Channel A | Channel B |
+|--------|-----------|-----------|
+| Module 1 | Command 145 | Command 146 |
+| Module 2 | Command 147 | Command 148 |
+| Module 3 | Command 149 | Command 150 |
+| ... | ... | ... |
+| Module 32 | Command 207 | Command 208 |
+
+**Formula:**
+- Command A = 145 + (Module Number - 1) × 2
+- Command B = 146 + (Module Number - 1) × 2
+
+**Module State Examples:**
+
+| Hex (4 chars) | Channel A | Channel B | Description |
+|---------------|-----------|-----------|-------------|
+| `0000` | OFF | OFF | Both channels OFF |
+| `0700` | ON | OFF | Channel A ON, Channel B OFF |
+| `0007` | OFF | ON | Channel A OFF, Channel B ON |
+| `0707` | ON | ON | Both channels ON |
+
+**Configuration:**
+The starting command ID (145) is configurable in `const.py` via `DOMOTIC_MODULE_FIRST_COMMAND_ID`. Change this value if your panel uses different command IDs for domotic modules.
+
+**Difference from Standard Commands:**
+- Standard commands (1-80): Use **bitmask** (1 bit per command, 8 commands per byte)
+- Domotic modules (145-208): Use **byte-per-channel** (1 byte = 1 channel state, not bitmask)
 
 ## Extended GSM Information (AmicaWeb Plus/SmartWeb Only)
 
@@ -475,6 +534,7 @@ This script:
 - Shows positions relative to the marker
 - Displays armed areas, open zones, excluded zones, alarm memory
 - Shows command switch states (bistable commands) with ON/OFF status
+- Shows domotic module states (home automation modules) with channel states
 
 ⚠️ **Important:** This script does NOT support authentication. You must disable the PIN code requirement in your panel's web interface to use it.
 

@@ -47,10 +47,14 @@ GSM_OPERATOR_HEX_TO_NAME = {
 
 # GSM Status hex to HA state mapping (translatable)
 GSM_STATUS_HEX_TO_HA_STATE = {
+    "01": "no_sim",
     "05": "no_sim",
     "04": "searching",
-    "18": "ok",
-    "08": "ok",
+    "18": "4g",
+    "10": "4g",
+    "28": "3g",
+    "20": "3g",
+    "08": "2g",
     "00": "ok"
 }
 
@@ -108,7 +112,7 @@ ALARM_HEX_TO_HA_STATE = {
     "8C": "triggered"            # in_allarme
 }
 
-ALARM_HEX_TO_AP_STATE ={ 
+ALARM_HEX_TO_AP_STATE ={
     "08": "disarmed_gsm_excluded",   # Rest (no GSM)
     "0C": "disarmed",                # Rest
     "0E": "arming",                  # Arming (entry delay)
@@ -118,6 +122,22 @@ ALARM_HEX_TO_AP_STATE ={
     "8C": "triggered",               # ALARM TRIGGERED
     "88": "triggered_gsm_excluded"   # ALARM TRIGGERED (no GSM)
 }
+
+# Domotic module states (commands > 80)
+# Each channel uses 1 byte (2 hex chars)
+DOMOTIC_MODULE_HEX_TO_STATE = {
+    "00": "off",     # Module is OFF
+    "07": "on",      # Module is ON
+    # Additional states can be added here as needed (extensible)
+    # Example:
+    # "03": "dimmed",
+    # "05": "flashing",
+}
+
+# Domotic module configuration
+# First command ID for domotic modules (adjust if your panel uses different IDs)
+DOMOTIC_MODULE_FIRST_COMMAND_ID = 145  # Module 0 = commands 145-146, module 1 = 147-148, etc.
+# Change to 81 if your domotic modules start from command 81
 
 # Data keys
 DATA_COORDINATOR = "coordinator"

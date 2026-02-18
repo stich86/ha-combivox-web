@@ -37,15 +37,14 @@ async def async_setup_entry(
 
     entities = []
 
-    # Create a switch for each command of type "switch" (bistabile)
+    # Create a switch for each command (all commands are switches)
     if commands_config:
         for command in commands_config:
             command_name = command.get("command_name")
             command_id = command.get("command_id")
-            command_type = command.get("command_type")
 
-            # Only create switches for commands with type "switch"
-            if command_name and command_type == "switch":
+            # Create switches for all commands with names
+            if command_name:
                 entities.append(CombivoxCommandSwitch(
                     coordinator,
                     client,
