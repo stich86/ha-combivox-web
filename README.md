@@ -10,42 +10,66 @@ Home Assistant integration for Combivox alarm panels (Amica/Elisa series) via Am
 
 | Platform | Description |
 |----------|-------------|
-| `alarm_control_panel` | Main alarm panel with arm/disarm functionality |
-| `binary_sensor` | Zone sensors (open/closed) and area sensors (armed/disarmed) |
-| `sensor` | System status (model, alarm state, GSM info, date/time, anomalies) |
-| `button` | Zone bypass toggles, macro/scenario execution, clear alarm memory |
-| `switch` | Command switches for panel outputs and domotic modules |
+| `alarm_control_panel` | 🎛️ Main alarm panel with arm/disarm functionality |
+| `binary_sensor` | 🏠 Zone sensors (open/closed) and area sensors (armed/disarmed) |
+| `sensor` | 📊 System status (model, alarm state, GSM info, date/time, anomalies) |
+| `button` | 🔘 Zone bypass toggles, macro/scenario execution, clear alarm memory |
+| `switch` | 🔌 Command switches for panel outputs and domotic modules |
 
 ## Features
 
-- **Real-time Status Monitoring**: Polls alarm status every 5 seconds (configurable 3-300 seconds)
-- **Zone Binary Sensors**: Open/closed status with alarm memory and inclusion attributes
-- **Area Binary Sensors**: Armed/disarmed status with dynamic icons
-- **Alarm Control Panel**: Arm Away/Home/Night and Disarm with configurable arm modes
-- **Zone Bypass Buttons**: Toggle zone inclusion/exclusion
-- **Macro/Scenario Buttons**: Execute panel macros and scenarios
-- **Command Switches**: Control panel outputs and home automation modules
+- 🔄 **Real-time Status Monitoring**: Polls alarm status every 5 seconds (configurable 3-300 seconds)
+- 🚪 **Zone Binary Sensors**: Open/closed status with alarm memory and inclusion attributes
+- 🛡️ **Area Binary Sensors**: Armed/disarmed status with dynamic icons
+- 🎛️ **Alarm Control Panel**: Arm Away/Home/Night and Disarm with configurable arm modes
+- ⚙️ **Zone Bypass Buttons**: Toggle zone inclusion/exclusion
+- ▶️ **Macro/Scenario Buttons**: Execute panel macros and scenarios
+- 🔌 **Command Switches**: Control panel outputs and home automation modules
   - **Standard Commands** (IDs 1-80): Panel outputs with bitmap-based state tracking
   - **Domotic Modules** (IDs 145-208): Home automation modules with 2 channels each
     - Each module has 2 independent outputs (Channel A and Channel B)
     - Currently supports up to 32 modules (64 channels total)
     - Real-time state monitoring from panel status
-- **System Sensors**: Device model, alarm state, GSM status (signal, operator), anomalies
-- **Label Caching**: Saves zone/area/macro names to JSON file for fast loading
-- **Smart Polling**: Single unified coordinator for efficient updates
-- **Automatic Recovery**: Handles network issues and session expiration with automatic retry
+- 📡 **System Sensors**: Device model, alarm state, GSM status (signal, operator), anomalies
+- 💾 **Label Caching**: Saves zone/area/macro names to JSON file for fast loading
+- ⚡ **Smart Polling**: Single unified coordinator for efficient updates
+- 🔁 **Automatic Recovery**: Handles network issues and session expiration with automatic retry
   - Entities become unavailable during outages (no stale data)
   - Automatically reconnects when panel comes back online
 
+## Disclaimer
+
+This project has been developed by analyzing the publicly exposed web interface and JavaScript files, using standard HTTP requests to communicate with the panel's XML endpoints. No proprietary software, reverse-engineered binaries, or confidential documentation were used.
+
+**How it works:**
+- 🔌 The integration makes standard HTTP requests to publicly available endpoints
+- 📊 Data is extracted from XML responses and JavaScript files served by the panel's web interface
+
+**Important Notices:**
+
+- ⚠️ This software is provided **"as-is"**, without warranty of any kind
+- 🚫 The authors assume **no responsibility** for damages or issues arising from its use
+- ⚡ Use at your **own risk**
+- 📌 This is an **unofficial** integration and is not endorsed by Combivox
+- 🧪 Always test in a safe environment before relying on it for security
+- 💥 The authors are **not responsible** for any damage to your alarm system, property, or security breaches
+
+By using this integration, you agree that:
+- ✅ You understand the risks involved
+- 📜 You comply with your alarm panel's warranty and terms of service
+- 🎯 You accept full responsibility for any consequences
+
+This project is intended for **educational purposes** and **personal use only**. 📚
+
 ## Requirements
 
-- Home Assistant 2025.11 or later
-- Combivox alarm panel (Amica/Elisa series) with AmicaWeb/AmicaWeb Plus/SmartWeb module enabled (not compatible with SmartWeb Video Plus)
-- HTTP access to the alarm panel (default port 80)
+- 🏠 Home Assistant 2025.11 or later
+- 🔧 Combivox alarm panel (Amica/Elisa series) with AmicaWeb/AmicaWeb Plus/SmartWeb module enabled (not compatible with SmartWeb Video Plus)
+- 🌐 HTTP access to the alarm panel (default port 80)
 
 ## Installation
 
-### Method 1: HACS (Recommended)
+### Method 1: HACS (Recommended) 📦
 
 1. Open HACS in Home Assistant
 2. Go to "Integrations"
@@ -56,7 +80,7 @@ Home Assistant integration for Combivox alarm panels (Amica/Elisa series) via Am
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=combivox_web)
 
-### Method 2: Manual Installation
+### Method 2: Manual Installation 💻
 
 1. Using the tool of choice, open the directory (folder) for your HA configuration (where you find `configuration.yaml`)
 2. If you do not have a `custom_components` directory (folder) there, create it
@@ -67,9 +91,9 @@ Home Assistant integration for Combivox alarm panels (Amica/Elisa series) via Am
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=combivox_web)
 
-## Configuration
+## Configuration ⚙️
 
-### Initial Setup
+### Initial Setup ➕
 
 After installation, add the integration:
 
@@ -88,8 +112,8 @@ After installation, add the integration:
 After initial setup, click **Configure** on the integration to access advanced options:
 
 #### Basic Settings
-- **Scan Interval**: Polling interval in seconds (1-300, default: 5)
-- **Code**: Master Code used to authenticate and arm\disarm areas and macros
+- ⏱️ **Scan Interval**: Polling interval in seconds (1-300, default: 5)
+- 🔑 **Code**: Master Code used to authenticate and arm\disarm areas and macros
 
 > **⚠️ Important Note about Alarm Control Panel PIN Code:**
 > Home Assistant requires a PIN code to be set in the alarm control panel UI (this is a HA requirement).
@@ -99,12 +123,12 @@ After initial setup, click **Configure** on the integration to access advanced o
 > **Example**: Set "1234" (or any code) in the HA alarm panel UI, but all actual commands will use your real Master Code from this configuration.
 
 #### Area Configuration
-- **Areas for Away Mode**: Multi-select of area names for away arming
-- **Areas for Home Mode**: Multi-select of area names for home arming
-- **Areas for Night Mode**: Multi-select of area names for night arming
-- **Areas for Disarm Mode**: Multi-select of area names for selective disarming
+- 🏖️ **Areas for Away Mode**: Multi-select of area names for away arming
+- 🏠 **Areas for Home Mode**: Multi-select of area names for home arming
+- 🌙 **Areas for Night Mode**: Multi-select of area names for night arming
+- 🔓 **Areas for Disarm Mode**: Multi-select of area names for selective disarming
 
-#### Disarm Behavior
+#### Disarm Behavior 🔓
 
 The integration supports **selective disarming**:
 
@@ -114,33 +138,34 @@ The integration supports **selective disarming**:
 
 This allows you to keep the perimeter armed while disarming only interior areas.
 
-#### Arm Modes
+#### Arm Modes 🔒
 
 For each arm type (Away/Home/Night):
-- **Normal**: Arming with exit delay (standard mode)
-- **Immediate**: Arming without exit delay
-- **Forced**: Bypass open zones and arm with delay
+- ⏱️ **Normal**: Arming with exit delay (standard mode)
+- ⚡ **Immediate**: Arming without exit delay
+- 🔓 **Forced**: Bypass open zones and arm with delay
 
-#### Macro/Scenario Configuration
-- **Scenario for Away**: Macro to execute when arming away
-- **Scenario for Home**: Macro to execute when arming home
-- **Scenario for Night**: Macro to execute when arming night
-- **Scenario for Disarm**: Macro to execute when disarming
+#### Macro/Scenario Configuration 🎬
+
+- 🎬 **Scenario for Away**: Macro to execute when arming away
+- 🎬 **Scenario for Home**: Macro to execute when arming home
+- 🎬 **Scenario for Night**: Macro to execute when arming night
+- 🎬 **Scenario for Disarm**: Macro to execute when disarming
 
 **Note**: Areas have priority over scenarios when both are configured.
 
-## Documentation
+## Documentation 📚
 
 For detailed documentation, see:
 
-- **[XML Analysis](docs/xml_analysis.md)** - Technical analysis of status9.xml byte structure
-- **[Services Documentation](docs/services.md)** - Using arm/disarm services
-- **[Entities Documentation](docs/entities.md)** - All created entities and their attributes
-- **[Authentication Documentation](docs/authentication.md)** - How authentication works
-- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
-- **[Supported Models](docs/supported-models.md)** - Compatibility table and reporting
+- 📄 **[XML Analysis](docs/xml_analysis.md)** - Technical analysis of status9.xml byte structure
+- 🛠️ **[Services Documentation](docs/services.md)** - Using arm/disarm services
+- 📦 **[Entities Documentation](docs/entities.md)** - All created entities and their attributes
+- 🔐 **[Authentication Documentation](docs/authentication.md)** - How authentication works
+- 🔧 **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+- 📋 **[Supported Models](docs/supported-models.md)** - Compatibility table and reporting
 
-## Download Diagnostics
+## Download Diagnostics 📊
 
 The integration supports downloading diagnostic data:
 
@@ -151,11 +176,11 @@ The integration supports downloading diagnostic data:
 
 A JSON file will be downloaded with comprehensive diagnostic information (connection, state, configuration, device info, live panel data).
 
-## Support
+## Support 💬
 
 For issues, questions, or contributions:
-- **GitHub Issues**: [Create an issue](https://github.com/stich86/ha-combivox-web/issues)
-- **Supported Models**: Help us improve - report your panel model in [Supported Models](docs/supported-models.md)
+- 🐛 **GitHub Issues**: [Create an issue](https://github.com/stich86/ha-combivox-web/issues)
+- 📋 **Supported Models**: Help us improve - report your panel model in [Supported Models](docs/supported-models.md)
 
 [hacs-shield]: https://img.shields.io/badge/hacs-default-orange.svg
 [hacs-url]: https://hacs.xyz/
