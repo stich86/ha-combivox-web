@@ -14,6 +14,7 @@ Home Assistant integration for Combivox alarm panels (Amica/Elisa series) via Am
 | `binary_sensor` | Zone sensors (open/closed) and area sensors (armed/disarmed) |
 | `sensor` | System status (model, alarm state, GSM info, date/time, anomalies) |
 | `button` | Zone bypass toggles, macro/scenario execution, clear alarm memory |
+| `switch` | Command switches for panel outputs and domotic modules |
 
 ## Features
 
@@ -23,6 +24,12 @@ Home Assistant integration for Combivox alarm panels (Amica/Elisa series) via Am
 - **Alarm Control Panel**: Arm Away/Home/Night and Disarm with configurable arm modes
 - **Zone Bypass Buttons**: Toggle zone inclusion/exclusion
 - **Macro/Scenario Buttons**: Execute panel macros and scenarios
+- **Command Switches**: Control panel outputs and home automation modules
+  - **Standard Commands** (IDs 1-80): Panel outputs with bitmap-based state tracking
+  - **Domotic Modules** (IDs 145-208): Home automation modules with 2 channels each
+    - Each module has 2 independent outputs (Channel A and Channel B)
+    - Currently supports up to 32 modules (64 channels total)
+    - Real-time state monitoring from panel status
 - **System Sensors**: Device model, alarm state, GSM status (signal, operator), anomalies
 - **Label Caching**: Saves zone/area/macro names to JSON file for fast loading
 - **Smart Polling**: Single unified coordinator for efficient updates
