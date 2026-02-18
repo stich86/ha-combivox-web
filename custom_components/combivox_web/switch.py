@@ -117,9 +117,12 @@ class CombivoxCommandSwitch(CoordinatorEntity, SwitchEntity):
 
         success = await self.client.execute_command(self.command_id, activate=True)
         if success:
+            # Set optimistic state immediately for UI feedback
             self._attr_is_on = True
-            _LOGGER.info("Command switch %d (%s) turned on successfully", self.command_id, self.command_name)
             self.async_write_ha_state()
+            _LOGGER.info("Command switch %d (%s) turned on successfully", self.command_id, self.command_name)
+            # Refresh coordinator to get actual state from panel
+            await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to turn on command switch %d (%s)", self.command_id, self.command_name)
 
@@ -129,8 +132,11 @@ class CombivoxCommandSwitch(CoordinatorEntity, SwitchEntity):
 
         success = await self.client.execute_command(self.command_id, activate=False)
         if success:
+            # Set optimistic state immediately for UI feedback
             self._attr_is_on = False
-            _LOGGER.info("Command switch %d (%s) turned off successfully", self.command_id, self.command_name)
             self.async_write_ha_state()
+            _LOGGER.info("Command switch %d (%s) turned off successfully", self.command_id, self.command_name)
+            # Refresh coordinator to get actual state from panel
+            await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to turn off command switch %d (%s)", self.command_id, self.command_name)

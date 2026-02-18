@@ -229,35 +229,29 @@ class CombivoxXMLParser:
                 return {}
             si = si_element.text
 
-            # Find FFFFFF marker (3 consecutive FF bytes = 6 characters)
-            # IMPORTANT:
-            # - SIM in error: FFFFFF marker STARTS AT position 64
-            # - SIM ok: FFFFFF marker STARTS AT position 96
-            # - The byte before the marker can be: FF, 1F, 3F, or others
-            # - VALIDATION: after the marker (+6 characters) there must be 0000 or 0101
+            # Find FFFFFF marker position using fixed offset from end
+            # IMPORTANT: The marker is always at a fixed position from the end
+            # - At 1124 chars from end: end of "extra characters" section
+            # - FFFFFF marker starts 6 characters BEFORE that point
+            # - Therefore: marker starts at len(si) - 1124 - 6 = len(si) - 1130
 
-            # Search ALL occurrences of "FFFFFF" and validate with subsequent content
-            search_start = 64
-            marker_pos = -1
+            MARKER_OFFSET_FROM_END = 1130  # 1124 + 6 (marker itself)
 
-            while True:
-                pos = si.find("FFFFFF", search_start)
-                if pos == -1:
-                    break
-
-                # Verify that after the marker there are 4 characters (0000, 0101, F700)
-                if pos + 10 <= len(si):
-                    next_bytes = si[pos + 6:pos + 10]
-                    if next_bytes in ["0000", "0101", "F700"]:
-                        marker_pos = pos
-                        break
-
-                # Continue search after this occurrence
-                search_start = pos + 1
-
-            if marker_pos == -1:
-                _LOGGER.error("Valid FFFFFF marker not found (looking for FFFFFF followed by 0000 or 0101)")
+            if len(si) < MARKER_OFFSET_FROM_END:
+                _LOGGER.error("String too short for fixed marker position (len=%d, need %d)",
+                             len(si), MARKER_OFFSET_FROM_END)
                 return {}
+
+            # Calculate marker position directly from end
+            marker_pos = len(si) - MARKER_OFFSET_FROM_END
+
+            # Validate that we found FFFFFF at expected position
+            if si[marker_pos:marker_pos + 6] != "FFFFFF":
+                _LOGGER.warning("Expected FFFFFF at fixed position %d but found: %s (continuing anyway)",
+                               marker_pos, si[marker_pos:marker_pos + 6])
+            else:
+                _LOGGER.debug("Found FFFFFF marker at fixed position: %d (len=%d)",
+                             marker_pos, len(si))
 
             # Parse GSM data from bytes 3, 6, 7 (0-indexed, after skipping first 2 bytes)
             # Byte 2 (3°): Signal strength (0-5 bars)

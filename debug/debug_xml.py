@@ -329,27 +329,34 @@ def print_analysis(si_value, prev_si):
         print(f"  {Colors.RED}GSM data not available{Colors.RESET}")
 
     # ========== FIND FFFFFF MARKER ==========
-    # Find the FFFFFF marker (3 bytes = 6 hex chars) followed by 0000 or 0101
+    # Find the FFFFFF marker using fixed offset from end
     print(f"\n{Colors.BOLD}{'='*80}{Colors.RESET}")
     print(f"{Colors.BOLD}MARKER FFFFFF:{Colors.RESET}", end=" ")
 
-    pos_marker = -1
-    # Search for FFFFFF (6 chars = 3 bytes) followed by 0000 or 0101
-    for i in range(len(si_value) - 10):  # Need space for marker (6) + 4 chars
-        if si_value[i:i+6] == "FFFFFF":  # 3 bytes of FF
-            next_bytes = si_value[i+6:i+10]
-            if next_bytes in ["0000", "0101", "F700"]:
-                pos_marker = i
-                break
+    # Fixed offset from end: 1130 characters
+    # - At 1124 chars from end: end of "extra characters"
+    # - FFFFFF marker starts 6 characters BEFORE that point
+    MARKER_OFFSET_FROM_END = 1130
 
-    if pos_marker == -1:
-        print(f"{Colors.RED}NOT FOUND{Colors.RESET}")
-        print(f"  {Colors.YELLOW}Note: Searching for FFFFFF (3 bytes) followed by 0000 or 0101{Colors.RESET}")
+    if len(si_value) < MARKER_OFFSET_FROM_END:
+        print(f"{Colors.RED}STRING TOO SHORT{Colors.RESET}")
+        print(f"  {Colors.YELLOW}Need {MARKER_OFFSET_FROM_END} chars, got {len(si_value)}{Colors.RESET}")
         return
 
-    print(f"position {pos_marker} (byte {pos_marker//2})")
+    pos_marker = len(si_value) - MARKER_OFFSET_FROM_END
+
+    # Validate that we found FFFFFF at expected position
+    if si_value[pos_marker:pos_marker+6] != "FFFFFF":
+        print(f"{Colors.YELLOW}VALIDATION WARNING{Colors.RESET}")
+        print(f"  Expected FFFFFF at position {pos_marker} but found: {si_value[pos_marker:pos_marker+6]}")
+        print(f"  {Colors.YELLOW}Continuing anyway...{Colors.RESET}")
+    else:
+        print(f"{Colors.GREEN}FOUND{Colors.RESET} at fixed position {pos_marker} (byte {pos_marker//2})")
+
     print(f"  Marker: {si_value[pos_marker:pos_marker+6]}")
     print(f"  Next bytes: {si_value[pos_marker+6:pos_marker+10]}")
+    print(f"  String length: {len(si_value)} chars")
+    print(f"  Offset from end: {len(si_value) - pos_marker} chars")
 
     # ========== AREAS STATE ==========
     # Areas state = marker_pos - 12 : marker_pos - 8 (4 bytes before marker)
