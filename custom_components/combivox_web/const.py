@@ -30,6 +30,9 @@ PERMMANUAL = [2, 7, 6, 1, 4, 5, 8, 3]
 # Macro execution response code
 MACRO_SUCCESS_CODE = 31  # 0x31 = success
 
+# XML marker suffixes (valid suffixes after FFFFFF marker)
+MARKER_SUFFIXES = ["0000", "0101", "F700"]
+
 # Arm modes
 ARM_MODE_NORMAL = "normal"
 ARM_MODE_IMMEDIATE = "immediate"

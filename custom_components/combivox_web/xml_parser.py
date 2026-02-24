@@ -5,7 +5,7 @@ import logging
 import datetime
 from typing import Dict, List, Optional, Any
 
-from .const import ALARM_HEX_TO_AP_STATE
+from .const import ALARM_HEX_TO_AP_STATE, MARKER_SUFFIXES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -245,10 +245,10 @@ class CombivoxXMLParser:
                 if pos == -1:
                     break
 
-                # Verify that after the marker there are 4 characters (0000, 0101, F700)
+                # Verify that after the marker there are 4 characters (valid suffixes from MARKER_SUFFIXES)
                 if pos + 10 <= len(si):
                     next_bytes = si[pos + 6:pos + 10]
-                    if next_bytes in ["0000", "0101", "F700"]:
+                    if next_bytes in MARKER_SUFFIXES:
                         marker_pos = pos
                         break
 
@@ -256,7 +256,7 @@ class CombivoxXMLParser:
                 search_start = pos + 1
 
             if marker_pos == -1:
-                _LOGGER.error("Valid FFFFFF marker not found (looking for FFFFFF followed by 0000 or 0101)")
+                _LOGGER.error("Valid FFFFFF marker not found (looking for FFFFFF from MARKER_SUFFIXES)")
                 return {}
 
             # Parse GSM data from bytes 3, 6, 7 (0-indexed, after skipping first 2 bytes)

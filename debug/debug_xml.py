@@ -94,20 +94,27 @@ def parse_gsm_data(si_value):
         # Parse operator
         operator_code = int(operator_hex, 16)
         operator_names = {
-            0: "OTHER",
-            1: "VODAFONE",
-            2: "TIM",
-            3: "WIND",
-            4: "COMBIVOX"
+            0x00: "OTHER",
+            0x01: "VODAFONE",
+            0x02: "TIM",
+            0x03: "WIND",
+            0x04: "COMBIVOX",
+            0xFF: "UNKNOWN"
         }
-        operator_name = operator_names.get(operator_code, f"UNKNOWN({operator_code})")
+        operator_name = operator_names.get(operator_code, f"UNKNOWN(0x{operator_hex})")
 
         # Parse status
         status_code = int(status_hex, 16)
         status_names = {
             0x00: "OK",
             0x01: "NO_SIM",
-            0x02: "SEARCHING"
+            0x04: "SEARCHING",
+            0x05: "NO_SIM",
+            0x08: "2G",
+            0x10: "4G",
+            0x18: "4G",
+            0x20: "3G",
+            0x28: "3G"
         }
         status_name = status_names.get(status_code, f"UNKNOWN(0x{status_hex})")
 
