@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 
 import aiohttp
 
-from .const import PERMMANUAL, LOGIN_URL, LOGIN2_URL
+from .const import PERMMANUAL_LOGIN, PERMMANUAL_COMMAND, LOGIN_URL, LOGIN2_URL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,16 +34,24 @@ class CombivoxAuth:
         self._cookie: Optional[str] = None
         self._session: Optional[aiohttp.ClientSession] = None
 
-    def _generate_password(self, username: str = "admin") -> Tuple[str, str]:
+    def _generate_password(self, username: str = "admin", permmanual=None) -> Tuple[str, str]:
         """
         Generate dynamic password as per bash script esempio_insert.sh
 
         Args:
             username: Username for authentication (default: "admin")
+            permmanual: Permutation to use (default: None, auto-selects based on username)
 
         Returns:
             Tuple (password, base64_auth)
         """
+        # Auto-select permutation based on username if not specified
+        if permmanual is None:
+            if username == "combivox":
+                permmanual = PERMMANUAL_COMMAND
+            else:
+                permmanual = PERMMANUAL_LOGIN
+
         # Generate random PERMGEN (Python standard library only)
         PERMGEN = random.sample(range(1, 9), 8)
 
@@ -54,16 +62,16 @@ class CombivoxAuth:
         RAND_BEGIN = random.randint(0, 99)
         RAND_BEGIN = f"{RAND_BEGIN:02d}"
 
-        _LOGGER.debug("Username: %s", username)
+        _LOGGER.debug("Username: %s, permmanual: %s", username, permmanual)
 
         # TVALUE1 = CODE + RAND_LAST
         # Note: For technical codes (8 digits), this follows the same logic as user codes
         # The JavaScript adds 2 random digits regardless of code length (if >= 6)
         TVALUE1 = self.code + RAND_LAST
 
-        # TVALUE2 = apply PERMMANUAL
+        # TVALUE2 = apply permmanual (PERMMANUAL_LOGIN or PERMMANUAL_COMMAND)
         TVALUE2 = ""
-        for t in PERMMANUAL:
+        for t in permmanual:
             NEWNUMBER = TVALUE1[t - 1]
             TVALUE2 += NEWNUMBER
 

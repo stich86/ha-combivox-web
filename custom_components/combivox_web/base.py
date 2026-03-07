@@ -19,6 +19,7 @@ from .const import (
     EXECCHANGEIMP_URL,
     EXECCMD_URL,
     EXECDELMEM_URL,
+    REQPROG_URL,
     NUMTROUBLE_URL,
     NUMMEMPROG_URL,
     LABELMEM_URL,
@@ -27,8 +28,9 @@ from .const import (
     CONF_IP_ADDRESS,
     CONF_PORT,
     CONF_CODE,
-    PERMMANUAL,
+    PERMMANUAL_LOGIN,
     MACRO_SUCCESS_CODE,
+    ALARM_HEX_TO_AP_STATE,
 )
 from .xml_parser import CombivoxXMLParser
 
@@ -893,6 +895,9 @@ class CombivoxWebClient:
         """
         Disarm the specified areas.
 
+        IMPORTANT: When panel is in triggered state, this method uses reqProg.cgi
+        sequence (NOT insAree.xml) because insAree.xml doesn't work during alarm.
+
         Args:
             areas: List of area IDs to disarm
                    If empty, disarm ALL areas
@@ -910,9 +915,36 @@ class CombivoxWebClient:
                     return False
                 _LOGGER.info("Reauthentication successful")
 
-            # Get current status to see which areas are armed
+            # Get current status to check alarm state
             status_data = await self.get_status()
 
+            # Check if panel is in triggered state
+            if status_data:
+                current_state = status_data.get("state", "")
+                if current_state in ["triggered", "triggered_gsm_excluded"]:
+                    _LOGGER.warning("Panel is in %s state - using reqProg.cgi sequence for disarm (NOT insAree.xml)",
+                                  current_state)
+
+                    # Use reqProg.cgi sequence for alarm state
+                    # reqProg.cgi handles the entire disarm, NO need to call insAree.xml
+                    success = await self._send_alarm_registration()
+
+                    if success:
+                        # Build area names list for logging
+                        if areas:
+                            area_names = [
+                                f"{area_id}({self._area_name_map.get(area_id, area_id)})"
+                                for area_id in areas
+                            ]
+                            _LOGGER.info("Areas disarmed via reqProg.cgi: %s", ", ".join(area_names))
+                        else:
+                            _LOGGER.info("All areas disarmed via reqProg.cgi")
+                        return True
+                    else:
+                        _LOGGER.error("Failed to disarm via reqProg.cgi")
+                        return False
+
+            # Normal disarm via insAree.xml (when NOT in triggered state)
             if not status_data:
                 _LOGGER.warning("Could not get current status, defaulting to disarm all")
                 bIns0 = 0
@@ -939,7 +971,7 @@ class CombivoxWebClient:
             session = self._auth.get_session()
             url = f"{self.base_url}{INSAREA_URL}"
 
-            # Build raw payload: bIns0=BITMASK&idc=49&fIns=0&sDis=0
+            # Build raw payload: bIns0=BITMASK&idc=49&fIns=0
             payload = f"bIns0={bIns0}&idc=49&fIns=0"
 
             headers = {}
@@ -1082,6 +1114,154 @@ class CombivoxWebClient:
 
         except Exception as e:
             _LOGGER.error("Clear alarm memory command error: %s", e)
+            return False
+
+    async def _send_alarm_registration(self) -> bool:
+        """
+        Send alarm registration request to reqProg.cgi when panel is in alarm state.
+
+        When the panel is in triggered state, disarm commands via insAree.xml don't work.
+        This method implements the browser's retry logic to unlock the panel.
+
+        Browser sequence from PCAP analysis:
+        1. POST req=255 (hash A) → RESEND
+        2. POST req=255 (hash B, ricalculated) → WAIT
+        3. POST req=0 (hash B, reused) → WAIT
+        4. POST req=0 (hash B, reused) → REDIRECT (success!)
+
+        Rules:
+        - RESEND: Wrong PIN or panel busy → recalculate hash, retry with req=255
+        - WAIT: Correct PIN but panel busy → retry with req=0 using SAME hash
+        - REDIRECT: Success!
+
+        POST payload format:
+            txt_zip=Basic={base64}&hTxt=Basic={base64}&ncc=6
+        Where base64 is generated with username "combivox" and PERMMANUAL_COMMAND.
+
+        Returns:
+            True if disarming successful (REDIRECT received)
+            False if failed after all retries
+        """
+        try:
+            # Reauthenticate if not authenticated
+            if not self._auth.is_authenticated():
+                _LOGGER.warning("Not authenticated, attempting reauthentication...")
+                if not await self._auth.authenticate():
+                    _LOGGER.error("Reauthentication failed")
+                    return False
+                _LOGGER.info("Reauthentication successful")
+
+            session = self._auth.get_session()
+            if not session:
+                _LOGGER.error("No HTTP session available")
+                return False
+
+            # Phase 1: Try req=255 until we get WAIT (not RESEND)
+            max_req255_retries = 5
+            current_hash = None
+
+            for attempt in range(1, max_req255_retries + 1):
+                # Generate new hash for each req=255 attempt
+                b64_auth = self._auth.generate_auth_for_command(username="combivox")
+                current_hash = b64_auth
+
+                basic_value = f"Basic={b64_auth}"
+                payload = f"txt_zip={basic_value}&hTxt={basic_value}&ncc=6"
+
+                headers = {}
+                cookie = self._auth.get_cookie()
+                if cookie:
+                    headers["Cookie"] = cookie
+                headers["Referer"] = f"{self.base_url}/index.htm?id=10&req=0"
+                headers["Content-Type"] = "text/plain;charset=UTF-8"
+
+                url = f"{self.base_url}{REQPROG_URL}?req=255"
+
+                _LOGGER.debug("Phase 1 attempt %d/%d: POST req=255 with hash %s...",
+                             attempt, max_req255_retries, current_hash[:20] if current_hash else "None")
+
+                async with session.post(url, headers=headers, data=payload, timeout=self.timeout) as response:
+                    response_text = await response.text()
+
+                    _LOGGER.debug("Response: status=%d, body=%s",
+                                 response.status, response_text[:100] if response_text else "None")
+
+                    # Check response
+                    if response_text and "REDIRECT" in response_text:
+                        _LOGGER.info("Got REDIRECT on req=255 - alarm cleared successfully!")
+                        return True
+                    elif response_text and "WAIT" in response_text:
+                        _LOGGER.info("Got WAIT on req=255 - moving to phase 2 with same hash")
+                        break  # Got WAIT, move to phase 2 with current hash
+                    elif response_text and "RESEND" in response_text:
+                        _LOGGER.warning("Got RESEND on req=255 (attempt %d) - recalculating hash and retrying",
+                                      attempt)
+                        if attempt < max_req255_retries:
+                            await asyncio.sleep(0.5)  # Small delay before retry
+                            continue  # Retry with new hash
+                        else:
+                            _LOGGER.error("Max retries reached for req=255 with RESEND")
+                            return False
+                    else:
+                        _LOGGER.warning("Unexpected response on req=255: %s", response_text[:50])
+                        if attempt < max_req255_retries:
+                            await asyncio.sleep(0.5)
+                            continue
+                        else:
+                            return False
+
+            # Phase 2: Try req=0 with SAME hash (reuse, don't recalculate!)
+            if not current_hash:
+                _LOGGER.error("No hash available from phase 1")
+                return False
+
+            max_req0_retries = 5
+            for attempt in range(1, max_req0_retries + 1):
+                basic_value = f"Basic={current_hash}"
+                payload = f"txt_zip={basic_value}&hTxt={basic_value}&ncc=6"
+
+                headers = {}
+                cookie = self._auth.get_cookie()
+                if cookie:
+                    headers["Cookie"] = cookie
+                headers["Referer"] = f"{self.base_url}/index.htm?id=10&req=0"
+                headers["Content-Type"] = "text/plain;charset=UTF-8"
+
+                url = f"{self.base_url}{REQPROG_URL}?req=0"
+
+                _LOGGER.debug("Phase 2 attempt %d/%d: POST req=0 with SAME hash %s...",
+                             attempt, max_req0_retries, current_hash[:20])
+
+                async with session.post(url, headers=headers, data=payload, timeout=self.timeout) as response:
+                    response_text = await response.text()
+
+                    _LOGGER.debug("Response: status=%d, body=%s",
+                                 response.status, response_text[:100] if response_text else "None")
+
+                    # Check response
+                    if response_text and "REDIRECT" in response_text:
+                        _LOGGER.info("Got REDIRECT on req=0 - panel disarmed successfully!")
+                        return True
+                    elif response_text and "WAIT" in response_text:
+                        _LOGGER.info("Got WAIT on req=0 (attempt %d) - retrying with same hash", attempt)
+                        if attempt < max_req0_retries:
+                            await asyncio.sleep(0.2)  # Short delay for WAIT
+                            continue  # Retry with same hash
+                        else:
+                            _LOGGER.error("Max retries reached for req=0 with WAIT")
+                            return False
+                    else:
+                        _LOGGER.warning("Unexpected response on req=0: %s", response_text[:50])
+                        if attempt < max_req0_retries:
+                            await asyncio.sleep(0.2)
+                            continue
+                        else:
+                            return False
+
+            return False
+
+        except Exception as e:
+            _LOGGER.error("Error in alarm registration sequence: %s", e)
             return False
 
     async def execute_macro(self, macro_id: int, macro_name: str = None) -> bool:

@@ -25,7 +25,13 @@ CONF_MACRO_DISARM = "macro_disarm"
 DEFAULT_SCAN_INTERVAL = 5
 
 # Authentication permutations
-PERMMANUAL = [2, 7, 6, 1, 4, 5, 8, 3]
+# PERMMANUAL_LOGIN: Used for normal login (login.cgi/login2.cgi) with username "admin"
+PERMMANUAL_LOGIN = [2, 7, 6, 1, 4, 5, 8, 3]
+# PERMMANUAL_COMMAND: Used for reqProg.cgi commands with username "combivox"
+PERMMANUAL_COMMAND = [7, 1, 6, 2, 8, 4, 3, 5]
+
+# Backward compatibility alias
+PERMMANUAL = PERMMANUAL_LOGIN
 
 # Macro execution response code
 MACRO_SUCCESS_CODE = 31  # 0x31 = success
@@ -79,6 +85,7 @@ NUMMACRO_URL = "/numMacro.xml"
 EXECCHANGEIMP_URL = "/execChangeImp.xml"
 EXECCMD_URL = "/execCmd.xml"
 EXECDELMEM_URL = "/execDelMem.xml"
+REQPROG_URL = "/reqProg.cgi"
 NUMTROUBLE_URL = "/numTrouble.xml"
 NUMMEMPROG_URL = "/numMemProg.xml"
 LABELMEM_URL = "/labelMem.xml"
