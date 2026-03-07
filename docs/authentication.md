@@ -96,4 +96,90 @@ The integration automatically handles session management:
 - **Automatic reauthentication**: If the session expires, the integration automatically re-authenticates
 - **Cleanup**: Session is properly closed when the integration is unloaded or removed
 
+## Alarm State Disarm Authentication
+
+When the panel is in triggered alarm state, normal disarm commands via `insAree.xml` don't work. The integration uses a different authentication sequence specifically for this scenario.
+
+### Dual Authentication Permutations
+
+The integration uses two different authentication permutations based on the operation:
+
+| Permutation | Array | Username | Purpose |
+|-------------|-------|----------|---------|
+| `PERMMANUAL_LOGIN` | `[2,7,6,1,4,5,8,3]` | `admin` | Normal login and arm/disarm commands |
+| `PERMMANUAL_COMMAND` | `[7,1,6,2,8,4,3,5]` | `combivox` | Alarm state disarm via `reqProg.cgi` |
+
+The authentication method automatically selects the correct permutation based on the username being used.
+
+### reqProg.cgi Disarm Sequence
+
+When the panel is in triggered state, the integration follows this multi-phase retry sequence:
+
+#### Phase 1: req=255 (Initial authentication)
+
+```
+POST /reqProg.cgi?req=255
+Response: RESEND → Recalculate hash, retry
+Response: WAIT  → Save hash, move to Phase 2
+Response: REDIRECT → Immediate success
+```
+
+- **RESEND**: Wrong PIN or panel busy → Recalculate hash and retry with `req=255`
+- **WAIT**: Correct PIN but panel busy → Save current hash, move to Phase 2
+- **REDIRECT**: Panel disarmed successfully
+
+Max retries: 5 attempts with 0.5s delay between attempts.
+
+#### Phase 2: req=0 (Disarm execution)
+
+```
+POST /reqProg.cgi?req=0
+Response: WAIT → Retry with SAME hash
+Response: REDIRECT → Success!
+```
+
+- **Important**: The hash from Phase 1 is **reused**, not recalculated
+- **WAIT**: Panel still processing → Retry with same hash
+- **REDIRECT**: Panel successfully disarmed
+
+Max retries: 5 attempts with 0.2s delay between attempts.
+
+### Complete Sequence Example
+
+Based on PCAP analysis of the web interface behavior:
+
+```
+1. req=255 (hash A) → RESEND
+2. req=255 (hash B) → WAIT
+3. req=0   (hash B) → WAIT
+4. req=0   (hash B) → REDIRECT ✅
+```
+
+### Request Format
+
+**Endpoint:** `/reqProg.cgi?req=255` or `/reqProg.cgi?req=0`
+
+**Payload:**
+```
+txt_zip=Basic={base64_auth}&hTxt=Basic={base64_auth}&ncc=6
+```
+
+**Headers:**
+- `Content-Type: text/plain;charset=UTF-8`
+- `Referer: http://{IP}:{PORT}/index.htm?id=10&req=0`
+- `Cookie: {session_cookie}`
+
+**Important notes:**
+- Payload is sent as raw string (not URL-encoded)
+- The `=` signs must remain as `=`, not `%3D`
+- Base64 auth uses username `combivox` with `PERMMANUAL_COMMAND` permutation
+
+### When This Sequence is Used
+
+The integration automatically uses `reqProg.cgi` when:
+- Panel state is `triggered` or `triggered_gsm_excluded`
+- User attempts to disarm via UI or service
+
+For normal disarm operations (panel NOT in alarm state), the integration uses the standard `insAree.xml` endpoint.
+
 For more troubleshooting help, see the [Troubleshooting Guide](troubleshooting.md).

@@ -188,6 +188,49 @@ This guide covers common issues and their solutions.
    - "Areas for Disarm Mode" determines default disarm behavior
    - Service can override this with specific areas
 
+### Disarming doesn't work when panel is in alarm state
+
+**Symptoms:**
+- Panel shows "triggered" or "triggered_gsm_excluded" state
+- Disarm command appears to work but panel stays in alarm
+- Normal disarm via `insAree.xml` doesn't respond
+
+**Cause:** When the panel is in triggered alarm state, it rejects normal disarm commands.
+
+**Solution:** The integration automatically detects alarm state and uses the `reqProg.cgi` endpoint instead:
+
+1. **Automatic detection:**
+   - Integration checks panel state before disarming
+   - If triggered, uses special authentication sequence
+
+2. **Authentication sequence:**
+   - Phase 1: Sends `req=255` with new hash until WAIT received
+   - Phase 2: Sends `req=0` with SAME hash until REDIRECT received
+   - Panel responds with RESEND (retry with new hash) or WAIT (retry with same hash)
+
+3. **Enable debug logging to see sequence:**
+   ```yaml
+   logger:
+     default: info
+     logs:
+       custom_components.combivox_web.base: debug
+   ```
+
+   You'll see logs like:
+   ```
+   Panel is in triggered state - using reqProg.cgi sequence for disarm
+   Phase 1 attempt 1/5: POST req=255 with hash...
+   Got WAIT on req=255 - moving to phase 2
+   Phase 2 attempt 1/5: POST req=0 with SAME hash...
+   Got REDIRECT on req=0 - panel disarmed successfully!
+   ```
+
+**Important:**
+- This is normal behavior - the panel requires special handling during alarm
+- The sequence can take 2-5 seconds to complete
+- Max 5 retries per phase (10 total attempts)
+- See [Authentication Documentation](authentication.md#alarm-state-disarm-authentication) for technical details
+
 ---
 
 ## Performance Issues
