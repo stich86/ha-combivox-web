@@ -37,7 +37,7 @@ PERMMANUAL = PERMMANUAL_LOGIN
 MACRO_SUCCESS_CODE = 31  # 0x31 = success
 
 # XML marker suffixes (valid suffixes after FFFFFF marker)
-MARKER_SUFFIXES = ["0000", "0101", "F700"]
+MARKER_SUFFIXES = ["0000", "0101", "F700" ,"0068"]
 
 # Arm modes
 ARM_MODE_NORMAL = "normal"
