@@ -336,27 +336,27 @@ def print_analysis(si_value, prev_si):
         print(f"  {Colors.RED}GSM data not available{Colors.RESET}")
 
     # ========== FIND FFFFFF MARKER ==========
-    # Find the FFFFFF marker (3 bytes = 6 hex chars) followed by 0000 or 0101
+    # Check known positions: old versions at 64, new versions at 96
     print(f"\n{Colors.BOLD}{'='*80}{Colors.RESET}")
     print(f"{Colors.BOLD}MARKER FFFFFF:{Colors.RESET}", end=" ")
 
     pos_marker = -1
-    # Search for FFFFFF (6 chars = 3 bytes) followed by 0000 or 0101
-    for i in range(len(si_value) - 10):  # Need space for marker (6) + 4 chars
-        if si_value[i:i+6] == "FFFFFF":  # 3 bytes of FF
-            next_bytes = si_value[i+6:i+10]
-            if next_bytes in ["0000", "0101", "F700", "0068"]:
-                pos_marker = i
-                break
+
+    # Check both known positions (64 for old versions, 96 for new versions)
+    for check_pos in [64, 96]:
+        if check_pos + 6 <= len(si_value) and si_value[check_pos:check_pos + 6] == "FFFFFF":
+            pos_marker = check_pos
+            break
 
     if pos_marker == -1:
         print(f"{Colors.RED}NOT FOUND{Colors.RESET}")
-        print(f"  {Colors.YELLOW}Note: Searching for FFFFFF (3 bytes) followed by 0000 or 0101{Colors.RESET}")
+        print(f"  {Colors.YELLOW}Note: Searching for FFFFFF at position 64 or 96{Colors.RESET}")
         return
 
     print(f"position {pos_marker} (byte {pos_marker//2})")
     print(f"  Marker: {si_value[pos_marker:pos_marker+6]}")
     print(f"  Next bytes: {si_value[pos_marker+6:pos_marker+10]}")
+    print(f"  Version: {Colors.GREEN}{'NEW (48 byte offset)' if pos_marker == 96 else 'OLD (32 byte offset)'}{Colors.RESET}")
 
     # ========== AREAS STATE ==========
     # Areas state = marker_pos - 12 : marker_pos - 8 (4 bytes before marker)

@@ -5,7 +5,7 @@ import logging
 import datetime
 from typing import Dict, List, Optional, Any
 
-from .const import ALARM_HEX_TO_AP_STATE, MARKER_SUFFIXES
+from .const import ALARM_HEX_TO_AP_STATE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -231,32 +231,21 @@ class CombivoxXMLParser:
 
             # Find FFFFFF marker (3 consecutive FF bytes = 6 characters)
             # IMPORTANT:
-            # - SIM in error: FFFFFF marker STARTS AT position 64
-            # - SIM ok: FFFFFF marker STARTS AT position 96
-            # - The byte before the marker can be: FF, 1F, 3F, or others
-            # - VALIDATION: after the marker (+6 characters) there must be 0000 or 0101
+            # - Old versions: FFFFFF marker at position 64 (32 bytes = 64 chars)
+            # - New versions: FFFFFF marker at position 96 (48 bytes = 96 chars)
 
-            # Search ALL occurrences of "FFFFFF" and validate with subsequent content
-            search_start = 64
             marker_pos = -1
 
-            while True:
-                pos = si.find("FFFFFF", search_start)
-                if pos == -1:
+            # Check both known positions
+            for check_pos in [64, 96]:
+                if check_pos + 6 <= len(si) and si[check_pos:check_pos + 6] == "FFFFFF":
+                    marker_pos = check_pos
+                    _LOGGER.debug("Found FFFFFF marker at position %d (version: %s)",
+                                 check_pos, "new" if check_pos == 96 else "old")
                     break
 
-                # Verify that after the marker there are 4 characters (valid suffixes from MARKER_SUFFIXES)
-                if pos + 10 <= len(si):
-                    next_bytes = si[pos + 6:pos + 10]
-                    if next_bytes in MARKER_SUFFIXES:
-                        marker_pos = pos
-                        break
-
-                # Continue search after this occurrence
-                search_start = pos + 1
-
             if marker_pos == -1:
-                _LOGGER.error("Valid FFFFFF marker not found (looking for FFFFFF from MARKER_SUFFIXES)")
+                _LOGGER.error("FFFFFF marker not found at expected positions (64 or 96)")
                 return {}
 
             # Parse GSM data from bytes 3, 6, 7 (0-indexed, after skipping first 2 bytes)
