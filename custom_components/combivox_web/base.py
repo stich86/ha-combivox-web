@@ -1269,7 +1269,7 @@ class CombivoxWebClient:
         Execute a macro (scenario).
 
         Sends a POST command to execChangeImp.xml.
-        Payload format: comandi=macro_id;49;master_code;
+        Payload format: comandi=macro_id;auto;master_code;
 
         Args:
             macro_id: Macro ID
@@ -1296,7 +1296,7 @@ class CombivoxWebClient:
 
             # Execute macro via POST to execChangeImp.xml?id=2
             url = f"{self.base_url}/execChangeImp.xml?id=2"
-            payload = f"comandi={macro_id};49;{self.code};"
+            payload = f"comandi={macro_id};auto;{self.code};"
 
             macro_desc = f"({macro_name})" if macro_name else f"({macro_id})"
             _LOGGER.debug("Execute macro %d %s: URL=%s, payload=%s",
