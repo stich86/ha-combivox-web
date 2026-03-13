@@ -149,6 +149,9 @@ class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
             | AlarmControlPanelEntityFeature.ARM_AWAY
             | AlarmControlPanelEntityFeature.ARM_NIGHT
         )
+        
+        # Do not require code for arming
+        self._attr_code_arm_required = False 
 
         _LOGGER.debug("Alarm panel initialized - arm modes: away=%s, home=%s, night=%s",
                      self.arm_mode_away, self.arm_mode_home, self.arm_mode_night)
