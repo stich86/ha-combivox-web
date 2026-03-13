@@ -388,6 +388,15 @@ class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
         await self._arm_with_mode("night", self.areas_night, self.macro_night, self.arm_mode_night)
 
     async def async_alarm_disarm(self, code: Optional[str] = None) -> None:
+        # Validate code
+        if not code:
+            _LOGGER.warning("Disarm attempted without code")
+            return
+
+        if code != self.client.code:
+            _LOGGER.warning("Disarm attempted with invalid code")
+            return
+
         """Send disarm command."""
         _LOGGER.debug("Disarm called - macro_disarm='%s', areas_disarm=%s (type: %s)",
                      self.macro_disarm, self.areas_disarm, type(self.areas_disarm))
