@@ -125,6 +125,7 @@ async def async_get_config_entry_diagnostics(
                 "away_uses_macro": bool(config_entry.options.get("conf_macro_away")),
                 "home_uses_macro": bool(config_entry.options.get("conf_macro_home")),
                 "night_uses_macro": bool(config_entry.options.get("conf_macro_night")),
+                "custom_bypass_uses_macro": bool(config_entry.options.get("conf_macro_custom_bypass")),
                 "disarm_uses_macro": bool(config_entry.options.get("conf_macro_disarm")),
             },
         }

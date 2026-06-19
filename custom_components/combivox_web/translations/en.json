@@ -24,9 +24,22 @@
     "step": {
       "init": {
         "title": "Integration Options",
-        "description": "Configure PIN codes, scenarios and arm modes.",
+        "description": "Configure general settings and supported modes.",
         "data": {
           "code": "Master PIN Code",
+          "scan_interval": "Status Poll Interval (seconds)",
+          "enable_custom_bypass": "Enable custom bypass"
+        },
+        "data_description": {
+          "code": "Master PIN code for arm/disarm operations",
+          "scan_interval": "Status polling interval in seconds (default: 5, recommended range: 3-20)",
+          "enable_custom_bypass": "Check this box to show the Custom Bypass configuration"
+        }
+      },
+      "modes": {
+        "title": "Arming Modes Configuration",
+        "description": "Configure scenarios, areas and arm modes for each state.",
+        "data": {
           "macro_away": "Scenario for Away",
           "areas_away": "Areas for Away Mode",
           "arm_mode_away": "Arm Mode - Away",
@@ -34,14 +47,15 @@
           "areas_home": "Areas for Home Mode",
           "arm_mode_home": "Arm Mode - Home",
           "macro_night": "Scenario for Night",
+          "macro_custom_bypass": "Scenario for Custom Bypass",
           "areas_night": "Areas for Night Mode",
+          "areas_custom_bypass": "Areas for Custom Bypass Mode",
           "arm_mode_night": "Arm Mode - Night",
+          "arm_mode_custom_bypass": "Arm Mode - Custom Bypass",
           "macro_disarm": "Scenario for Disarm",
-          "areas_disarm": "Areas for Disarm Mode",
-          "scan_interval": "Status Poll Interval (seconds)"
+          "areas_disarm": "Areas for Disarm Mode"
         },
         "data_description": {
-          "code": "Master PIN code for arm/disarm operations",
           "macro_away": "Select a scenario to activate when arming away, or leave empty to use areas instead (if both are configured, areas have priority)",
           "areas_away": "Select areas to arm when arming away",
           "arm_mode_away": "Select arming mode for away (normal with exit delay, immediate, or forced bypassing open zones)",
@@ -49,11 +63,13 @@
           "areas_home": "Select areas to arm when arming home",
           "arm_mode_home": "Select arming mode for home (normal with exit delay, immediate, or forced bypassing open zones)",
           "macro_night": "Select a scenario to activate when arming night, or leave empty to use areas instead (if both are configured, areas have priority)",
+          "macro_custom_bypass": "Select a scenario to activate when arming custom bypass, or leave empty to use areas instead (if both are configured, areas have priority)",
           "areas_night": "Select areas to arm when arming night",
+          "areas_custom_bypass": "Select areas to arm when arming custom bypass",
           "arm_mode_night": "Select arming mode for night (normal with exit delay, immediate, or forced bypassing open zones)",
+          "arm_mode_custom_bypass": "Select arming mode for custom bypass (normal with exit delay, immediate, or forced bypassing open zones)",
           "macro_disarm": "Select a scenario to activate when disarming, or leave empty to use areas instead (if both are configured, areas have priority)",
-          "areas_disarm": "Select specific areas to disarm when disarming. If left empty, ALL areas will be disarmed (complete disarm)",
-          "scan_interval": "Status polling interval in seconds (default: 5, recommended range: 3-20)"
+          "areas_disarm": "Select specific areas to disarm when disarming. If left empty, ALL areas will be disarmed (complete disarm)"
         }
       }
     }
@@ -123,18 +139,21 @@
       "clear_alarm_memory": {
         "name": "Clear Alarm Memory"
       }
-    }
-  },
-  "state": {
-    "alarm_control_panel__combivox_alarm": {
-      "armed_away": "armed away",
-      "armed_home": "armed home",
-      "armed_night": "armed night",
-      "armed_custom_bypass": "armed custom bypass",
-      "disarmed": "ready",
-      "arming": "arming",
-      "pending": "pending",
-      "triggered": "triggered"
+    },
+    "alarm_control_panel": {
+      "combivox_alarm": {
+        "name": "Combivox Alarm",
+        "state": {
+          "armed_away": "Armed away",
+          "armed_home": "Armed home",
+          "armed_night": "Armed night",
+          "armed_custom_bypass": "Armed custom bypass",
+          "disarmed": "Ready",
+          "arming": "Arming",
+          "pending": "Pending",
+          "triggered": "Triggered"
+        }
+      }
     }
   },
   "services": {

@@ -22,13 +22,17 @@ from .const import (
     CONF_AREAS_AWAY,
     CONF_AREAS_HOME,
     CONF_AREAS_NIGHT,
+    CONF_ENABLE_CUSTOM_BYPASS,
+    CONF_AREAS_CUSTOM_BYPASS,
     CONF_AREAS_DISARM,
     CONF_ARM_MODE_AWAY,
     CONF_ARM_MODE_HOME,
     CONF_ARM_MODE_NIGHT,
+    CONF_ARM_MODE_CUSTOM_BYPASS,
     CONF_MACRO_AWAY,
     CONF_MACRO_HOME,
     CONF_MACRO_NIGHT,
+    CONF_MACRO_CUSTOM_BYPASS,
     CONF_MACRO_DISARM,
     ALARM_HEX_TO_HA_STATE,
 )
@@ -52,25 +56,31 @@ async def async_setup_entry(
     # Get device info for HA
     device_info = client.get_device_info_for_ha()
 
+    # Get custom bypass enabling status
+    enable_bypass = entry.options.get(CONF_ENABLE_CUSTOM_BYPASS, False)
+
     # Get area mappings from options (not data!)
     areas_away = entry.options.get(CONF_AREAS_AWAY, [])
     areas_home = entry.options.get(CONF_AREAS_HOME, [])
     areas_night = entry.options.get(CONF_AREAS_NIGHT, [])
+    areas_custom_bypass = entry.options.get(CONF_AREAS_CUSTOM_BYPASS, [])
     areas_disarm = entry.options.get(CONF_AREAS_DISARM, [])
 
     # Get macro mappings from options
     macro_away = entry.options.get(CONF_MACRO_AWAY, "")
     macro_home = entry.options.get(CONF_MACRO_HOME, "")
     macro_night = entry.options.get(CONF_MACRO_NIGHT, "")
+    macro_custom_bypass = entry.options.get(CONF_MACRO_CUSTOM_BYPASS, "")
     macro_disarm = entry.options.get(CONF_MACRO_DISARM, "")
 
     # Get arm mode mappings from options
     arm_mode_away = entry.options.get(CONF_ARM_MODE_AWAY, "normal")
     arm_mode_home = entry.options.get(CONF_ARM_MODE_HOME, "normal")
     arm_mode_night = entry.options.get(CONF_ARM_MODE_NIGHT, "normal")
+    arm_mode_custom_bypass = entry.options.get(CONF_ARM_MODE_CUSTOM_BYPASS, "normal")
 
-    _LOGGER.info("Alarm panel loading - arm modes: away=%s, home=%s, night=%s",
-                arm_mode_away, arm_mode_home, arm_mode_night)
+    _LOGGER.info("Alarm panel loading - arm modes: away=%s, home=%s, night=%s, custom_bypass=%s", 
+                arm_mode_away, arm_mode_home, arm_mode_night, arm_mode_custom_bypass)
 
     entity = CombivoxAlarmControlPanel(
         client=client,
@@ -79,14 +89,18 @@ async def async_setup_entry(
         areas_away=areas_away,
         areas_home=areas_home,
         areas_night=areas_night,
+        areas_custom_bypass=areas_custom_bypass,
         areas_disarm=areas_disarm,
         macro_away=macro_away,
         macro_home=macro_home,
         macro_night=macro_night,
+        enable_bypass=enable_bypass,
+        macro_custom_bypass=macro_custom_bypass,
         macro_disarm=macro_disarm,
         arm_mode_away=arm_mode_away,
         arm_mode_home=arm_mode_home,
         arm_mode_night=arm_mode_night,
+        arm_mode_custom_bypass=arm_mode_custom_bypass,
     )
 
     async_add_entities([entity], update_before_add=True)
@@ -108,19 +122,25 @@ class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
         areas_away: List[int],
         areas_home: List[int],
         areas_night: List[int],
+        areas_custom_bypass: List[int],
         areas_disarm: List[int],
         macro_away: str = "",
         macro_home: str = "",
         macro_night: str = "",
+        enable_bypass: bool = False,
+        macro_custom_bypass: str = "",
         macro_disarm: str = "",
         arm_mode_away: str = "normal",
         arm_mode_home: str = "normal",
         arm_mode_night: str = "normal",
+        arm_mode_custom_bypass: str = "normal",
     ):
         """Initialize the alarm control panel."""
         super().__init__(coordinator)
         self.client = client
         self.coordinator = coordinator
+
+        self.enable_bypass = enable_bypass
 
         # Store area mappings for each arm mode (NO DEFAULTS - use exactly what's configured)
         # Empty list = no areas configured for this mode
@@ -128,17 +148,20 @@ class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
         self.areas_home = areas_home if areas_home else []
         self.areas_night = areas_night if areas_night else []
         self.areas_disarm = areas_disarm if areas_disarm else []
+        self.areas_custom_bypass = areas_custom_bypass if areas_custom_bypass else []
 
         # Store macro mappings for each arm/disarm action
         self.macro_away = macro_away
         self.macro_home = macro_home
         self.macro_night = macro_night
         self.macro_disarm = macro_disarm
+        self.macro_custom_bypass = macro_custom_bypass
 
         # Store arm mode for each arm action
         self.arm_mode_away = arm_mode_away
         self.arm_mode_home = arm_mode_home
         self.arm_mode_night = arm_mode_night
+        self.arm_mode_custom_bypass = arm_mode_custom_bypass
 
         self._attr_unique_id = "combivox_alarm_panel"
         self._attr_name = "Combivox Alarm"
@@ -147,14 +170,17 @@ class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
         self._attr_supported_features = (
             AlarmControlPanelEntityFeature.ARM_HOME
             | AlarmControlPanelEntityFeature.ARM_AWAY
-            | AlarmControlPanelEntityFeature.ARM_NIGHT
+            | AlarmControlPanelEntityFeature.ARM_NIGHT            
         )
-        
+
+        if enable_bypass:
+            self._attr_supported_features |= AlarmControlPanelEntityFeature.ARM_CUSTOM_BYPASS
+
         # Do not require code for arming
         self._attr_code_arm_required = False 
 
-        _LOGGER.debug("Alarm panel initialized - arm modes: away=%s, home=%s, night=%s",
-                     self.arm_mode_away, self.arm_mode_home, self.arm_mode_night)
+        _LOGGER.debug("Alarm panel initialized - arm modes: away=%s, home=%s, night=%s, custom_bypass=%s",
+                     self.arm_mode_away, self.arm_mode_home, self.arm_mode_night, self.arm_mode_custom_bypass)
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to HA."""
@@ -168,34 +194,50 @@ class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
         """Handle updated data from the coordinator."""
         self.async_write_ha_state()
 
-    def update_areas(self, areas_away: List[int], areas_home: List[int], areas_night: List[int], areas_disarm: List[int]) -> None:
+    def update_areas(self, areas_away: List[int], areas_home: List[int], areas_night: List[int], areas_custom_bypass: List[int], areas_disarm: List[int]) -> None:
         """Update the area mappings dynamically."""
         # NO DEFAULTS - use exactly what's configured
         self.areas_away = areas_away if areas_away else []
         self.areas_home = areas_home if areas_home else []
         self.areas_night = areas_night if areas_night else []
+        self.areas_custom_bypass = areas_custom_bypass if areas_custom_bypass else []
         self.areas_disarm = areas_disarm if areas_disarm else []
-        _LOGGER.info("Alarm panel areas UPDATED - away: %s, home: %s, night: %s, disarm: %s",
+        _LOGGER.info("Alarm panel areas UPDATED - away: %s, home: %s, night: %s, custom_bypass: %s, disarm: %s",
                      self.areas_away or "(none)", self.areas_home or "(none)",
-                     self.areas_night or "(none)", self.areas_disarm or "(none)")
+                     self.areas_night or "(none)", self.areas_custom_bypass or "(none)", self.areas_disarm or "(none)")
 
-    def update_macros(self, macro_away: str, macro_home: str, macro_night: str, macro_disarm: str) -> None:
+    def update_macros(self, macro_away: str, macro_home: str, macro_night: str, macro_custom_bypass: str, macro_disarm: str) -> None:
         """Update the macro mappings dynamically."""
         self.macro_away = macro_away
         self.macro_home = macro_home
         self.macro_night = macro_night
+        self.macro_custom_bypass = macro_custom_bypass
         self.macro_disarm = macro_disarm
-        _LOGGER.debug("Alarm panel macros updated - away: %s, home: %s, night: %s, disarm: %s",
+        _LOGGER.debug("Alarm panel macros updated - away: %s, home: %s, night: %s, custom_bypass: %s, disarm: %s",
                      self.macro_away or "(none)", self.macro_home or "(none)",
-                     self.macro_night or "(none)", self.macro_disarm or "(none)")
+                     self.macro_night or "(none)", self.macro_custom_bypass or "(none)", self.macro_disarm or "(none)")
 
-    def update_arm_modes(self, arm_mode_away: str, arm_mode_home: str, arm_mode_night: str) -> None:
+    def update_arm_modes(self, arm_mode_away: str, arm_mode_home: str, arm_mode_night: str, arm_mode_custom_bypass: str) -> None:
         """Update the arm mode configurations dynamically."""
         self.arm_mode_away = arm_mode_away
         self.arm_mode_home = arm_mode_home
         self.arm_mode_night = arm_mode_night
-        _LOGGER.debug("Alarm panel arm modes updated - away: %s, home: %s, night: %s",
-                     self.arm_mode_away, self.arm_mode_home, self.arm_mode_night)
+        self.arm_mode_custom_bypass = arm_mode_custom_bypass
+        _LOGGER.debug("Alarm panel arm modes updated - away: %s, home: %s, night: %s, night: %s, custom_bypass: %s",
+                     self.arm_mode_away, self.arm_mode_home, self.arm_mode_night, self.arm_mode_custom_bypass)
+
+    def update_enable_bypass(self, enable_bypass: bool) -> None:
+        """Update custom bypass enabling status."""
+        self.enable_bypass = enable_bypass
+        if enable_bypass:
+            # Add features
+            self._attr_supported_features |= AlarmControlPanelEntityFeature.ARM_CUSTOM_BYPASS
+        else:
+            # Remove features
+            self._attr_supported_features &= ~AlarmControlPanelEntityFeature.ARM_CUSTOM_BYPASS
+        
+        # Force Home Assistant to redraw entity UI
+        self.async_write_ha_state()
 
     @property
     def state(self) -> str:
@@ -231,10 +273,12 @@ class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
             "areas_away_mode": self.areas_away,
             "areas_home_mode": self.areas_home,
             "areas_night_mode": self.areas_night,
+            "areas_custom_bypass_mode": self.areas_custom_bypass,
             "areas_disarm_mode": self.areas_disarm,
             "arm_mode_away": self.arm_mode_away,
             "arm_mode_home": self.arm_mode_home,
             "arm_mode_night": self.arm_mode_night,
+            "arm_mode_custom_bypass": self.arm_mode_custom_bypass,
             "current_mode": current_mode,
         }
         return attrs
@@ -308,7 +352,7 @@ class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
         Args:
             macro: Macro ID string
             areas: List of area IDs
-            mode: Arm mode (away/home/night) for logging
+            mode: Arm mode (away/home/night/custom_bypass) for logging
 
         Returns:
             Dict with 'type' ('areas' or 'macro') and 'data' (areas list or macro ID)
@@ -356,7 +400,7 @@ class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
         """Generic arm method with macro/areas priority logic.
 
         Args:
-            mode: Arm mode (away/home/night)
+            mode: Arm mode (away/home/night/custom_bypass)
             areas: List of area IDs for this mode
             macro_id: Macro ID for this mode
             arm_mode: Arm mode type (normal/immediate/forced)
@@ -389,6 +433,10 @@ class CombivoxAlarmControlPanel(CoordinatorEntity, AlarmControlPanelEntity):
     async def async_alarm_arm_night(self, code: Optional[str] = None) -> None:
         """Send arm night command."""
         await self._arm_with_mode("night", self.areas_night, self.macro_night, self.arm_mode_night)
+
+    async def async_alarm_arm_custom_bypass(self, code: Optional[str] = None) -> None:
+        """Send arm custom bypass command."""
+        await self._arm_with_mode("custom_bypass", self.areas_custom_bypass, self.macro_custom_bypass, self.arm_mode_custom_bypass)
 
     async def async_alarm_disarm(self, code: Optional[str] = None) -> None:
         # Validate code

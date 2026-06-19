@@ -20,7 +20,7 @@ Home Assistant integration for Combivox alarm panels (Amica/Elisa series) via Am
 - **Real-time Status Monitoring**: Polls alarm status every 5 seconds (configurable 3-300 seconds)
 - **Zone Binary Sensors**: Open/closed status with alarm memory and inclusion attributes
 - **Area Binary Sensors**: Armed/disarmed status with dynamic icons
-- **Alarm Control Panel**: Arm Away/Home/Night and Disarm with configurable arm modes
+- **Alarm Control Panel**: Arm Away/Home/Night, Custom Bypass (optional) and Disarm with configurable arm modes
 - **Zone Bypass Buttons**: Toggle zone inclusion/exclusion
 - **Macro/Scenario Buttons**: Execute panel macros and scenarios
 - **System Sensors**: Device model, alarm state, GSM status (signal, operator), anomalies
@@ -69,12 +69,14 @@ After installation, add the integration:
 1. In Home Assistant, go to **Settings** → **Devices & Services**
 2. Click **Add Integration**
 3. Search for "Combivox Alarm Web"
-4. Enter the following information:
+4. Enter the following information in the first page:
    - **IP Address**: The IP address of your alarm panel (e.g., `192.168.1.125`)
    - **Port**: HTTP port (default: `80`)
    - **Master PIN Code**: Your master PIN code
      - If less than 6 digits, two zeros are appended to the end
      - Example: `1234` → `123400`
+   - **Enable custom bypass**: Check this if you want to enable custom bypass
+5. Configure scenarios, areas and arm modes for each state
 
 ### Options Configuration
 
@@ -107,7 +109,7 @@ This allows you to keep the perimeter armed while disarming only interior areas.
 
 #### Arm Modes
 
-For each arm type (Away/Home/Night):
+For each arm type (Away/Home/Night and Custom Bypass (only if enabled)):
 - **Normal**: Arming with exit delay (standard mode)
 - **Immediate**: Arming without exit delay
 - **Forced**: Bypass open zones and arm with delay
@@ -117,6 +119,7 @@ For each arm type (Away/Home/Night):
 - **Scenario for Home**: Macro to execute when arming home
 - **Scenario for Night**: Macro to execute when arming night
 - **Scenario for Disarm**: Macro to execute when disarming
+- **Scenario for Custom Bypass**: Macro to execute when arming Custom Bypass (only if enabled)
 
 **Note**: Areas have priority over scenarios when both are configured.
 

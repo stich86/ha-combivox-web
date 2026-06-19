@@ -9,16 +9,20 @@ CONF_CODE = "code"
 CONF_AREAS_AWAY = "areas_away"
 CONF_AREAS_HOME = "areas_home"
 CONF_AREAS_NIGHT = "areas_night"
+CONF_AREAS_CUSTOM_BYPASS = "areas_custom_bypass"
 CONF_AREAS_DISARM = "areas_disarm"
 CONF_ARM_MODE_AWAY = "arm_mode_away"
 CONF_ARM_MODE_HOME = "arm_mode_home"
 CONF_ARM_MODE_NIGHT = "arm_mode_night"
+CONF_ARM_MODE_CUSTOM_BYPASS = "arm_mode_custom_bypass"
 CONF_SCAN_INTERVAL = "scan_interval"
+CONF_ENABLE_CUSTOM_BYPASS = "enable_custom_bypass"
 
 # Macro mapping configuration
 CONF_MACRO_AWAY = "macro_away"
 CONF_MACRO_HOME = "macro_home"
 CONF_MACRO_NIGHT = "macro_night"
+CONF_MACRO_CUSTOM_BYPASS = "macro_custom_bypass"
 CONF_MACRO_DISARM = "macro_disarm"
 
 # Defaults

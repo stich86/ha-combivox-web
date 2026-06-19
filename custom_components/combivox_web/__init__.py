@@ -58,13 +58,17 @@ from .const import (
     CONF_AREAS_AWAY,
     CONF_AREAS_HOME,
     CONF_AREAS_NIGHT,
+    CONF_AREAS_CUSTOM_BYPASS,
     CONF_AREAS_DISARM,
     CONF_ARM_MODE_AWAY,
     CONF_ARM_MODE_HOME,
     CONF_ARM_MODE_NIGHT,
+    CONF_ENABLE_CUSTOM_BYPASS,
+    CONF_ARM_MODE_CUSTOM_BYPASS,
     CONF_MACRO_AWAY,
     CONF_MACRO_HOME,
     CONF_MACRO_NIGHT,
+    CONF_MACRO_CUSTOM_BYPASS,
     CONF_MACRO_DISARM,
     CONF_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
@@ -204,9 +208,9 @@ def _extract_new_config(config_entry: ConfigEntry) -> Dict[str, Any]:
     """
     from .const import (
         CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL,
-        CONF_AREAS_AWAY, CONF_AREAS_HOME, CONF_AREAS_NIGHT, CONF_AREAS_DISARM,
-        CONF_MACRO_AWAY, CONF_MACRO_HOME, CONF_MACRO_NIGHT, CONF_MACRO_DISARM,
-        CONF_ARM_MODE_AWAY, CONF_ARM_MODE_HOME, CONF_ARM_MODE_NIGHT,
+        CONF_AREAS_AWAY, CONF_AREAS_HOME, CONF_AREAS_NIGHT, CONF_AREAS_CUSTOM_BYPASS, CONF_AREAS_DISARM,
+        CONF_MACRO_AWAY, CONF_MACRO_HOME, CONF_MACRO_NIGHT, CONF_MACRO_CUSTOM_BYPASS, CONF_MACRO_DISARM,
+        CONF_ARM_MODE_AWAY, CONF_ARM_MODE_HOME, CONF_ARM_MODE_NIGHT, CONF_ARM_MODE_CUSTOM_BYPASS,
     )
 
     # Extract scan interval and convert to int
@@ -221,15 +225,19 @@ def _extract_new_config(config_entry: ConfigEntry) -> Dict[str, Any]:
         "areas_away": config_entry.options.get(CONF_AREAS_AWAY, []),
         "areas_home": config_entry.options.get(CONF_AREAS_HOME, []),
         "areas_night": config_entry.options.get(CONF_AREAS_NIGHT, []),
+        "areas_custom_bypass": config_entry.options.get(CONF_AREAS_CUSTOM_BYPASS, []),
         "areas_disarm": config_entry.options.get(CONF_AREAS_DISARM, []),
         "macro_away": config_entry.options.get(CONF_MACRO_AWAY, ""),
         "macro_home": config_entry.options.get(CONF_MACRO_HOME, ""),
         "macro_night": config_entry.options.get(CONF_MACRO_NIGHT, ""),
+        "macro_custom_bypass": config_entry.options.get(CONF_MACRO_CUSTOM_BYPASS, ""),
         "macro_disarm": config_entry.options.get(CONF_MACRO_DISARM, ""),
         "arm_mode_away": config_entry.options.get(CONF_ARM_MODE_AWAY, "normal"),
         "arm_mode_home": config_entry.options.get(CONF_ARM_MODE_HOME, "normal"),
         "arm_mode_night": config_entry.options.get(CONF_ARM_MODE_NIGHT, "normal"),
+        "arm_mode_custom_bypass": config_entry.options.get(CONF_ARM_MODE_CUSTOM_BYPASS, "normal"),
         "scan_interval": new_scan_interval,
+        "enable_bypass": config_entry.options.get(CONF_ENABLE_CUSTOM_BYPASS, False),
     }
 
 
@@ -248,28 +256,37 @@ def _get_current_config(alarm_panel) -> Dict[str, Any]:
             "areas_away": [],
             "areas_home": [],
             "areas_night": [],
+            "areas_custom_bypass": [],
             "areas_disarm": [],
             "macro_away": "",
             "macro_home": "",
             "macro_night": "",
+            "macro_custom_bypass": "",
             "macro_disarm": "",
             "arm_mode_away": "normal",
             "arm_mode_home": "normal",
             "arm_mode_night": "normal",
+            "arm_mode_custom_bypass": "normal",
+            "enable_bypass": False,
         }
+
 
     return {
         "areas_away": alarm_panel.areas_away or [],
         "areas_home": alarm_panel.areas_home or [],
         "areas_night": alarm_panel.areas_night or [],
+        "areas_custom_bypass": alarm_panel.areas_custom_bypass or [],
         "areas_disarm": alarm_panel.areas_disarm or [],
         "macro_away": alarm_panel.macro_away or "",
         "macro_home": alarm_panel.macro_home or "",
         "macro_night": alarm_panel.macro_night or "",
+        "macro_custom_bypass": alarm_panel.macro_custom_bypass or "",
         "macro_disarm": alarm_panel.macro_disarm or "",
         "arm_mode_away": alarm_panel.arm_mode_away,
         "arm_mode_home": alarm_panel.arm_mode_home,
         "arm_mode_night": alarm_panel.arm_mode_night,
+        "arm_mode_custom_bypass": alarm_panel.arm_mode_custom_bypass,
+        "enable_bypass": alarm_panel.enable_bypass,
     }
 
 
@@ -290,6 +307,7 @@ def _detect_changes(new_config: Dict[str, Any], current_config: Dict[str, Any],
         new_config.get("areas_away", []) != current_config.get("areas_away", []) or
         new_config.get("areas_home", []) != current_config.get("areas_home", []) or
         new_config.get("areas_night", []) != current_config.get("areas_night", []) or
+        new_config.get("areas_custom_bypass", []) != current_config.get("areas_custom_bypass", []) or
         new_config.get("areas_disarm", []) != current_config.get("areas_disarm", [])
     )
 
@@ -298,6 +316,7 @@ def _detect_changes(new_config: Dict[str, Any], current_config: Dict[str, Any],
         new_config["macro_away"] != current_config["macro_away"] or
         new_config["macro_home"] != current_config["macro_home"] or
         new_config["macro_night"] != current_config["macro_night"] or
+        new_config["macro_custom_bypass"] != current_config["macro_custom_bypass"] or
         new_config["macro_disarm"] != current_config["macro_disarm"]
     )
 
@@ -305,18 +324,23 @@ def _detect_changes(new_config: Dict[str, Any], current_config: Dict[str, Any],
     arm_modes_changed = (
         new_config["arm_mode_away"] != current_config["arm_mode_away"] or
         new_config["arm_mode_home"] != current_config["arm_mode_home"] or
-        new_config["arm_mode_night"] != current_config["arm_mode_night"]
+        new_config["arm_mode_night"] != current_config["arm_mode_night"] or
+        new_config["arm_mode_custom_bypass"] != current_config["arm_mode_custom_bypass"]
     )
 
     # Check scan interval
     scan_interval_changed = (current_interval is not None and
                             current_interval != new_config["scan_interval"])
 
+    # Check enable bypass checkbox
+    enable_bypass_changed = new_config["enable_bypass"] != current_config["enable_bypass"]
+
     return {
         "areas": areas_changed,
         "macros": macros_changed,
         "arm_modes": arm_modes_changed,
         "scan_interval": scan_interval_changed,
+        "enable_bypass": enable_bypass_changed,
     }
 
 
@@ -335,13 +359,25 @@ async def _apply_changes(hass: HomeAssistant, config_entry: ConfigEntry,
     alarm_panel = _get_alarm_panel_entity(hass, config_entry)
     coordinator = hass.data.get(DOMAIN, {}).get(config_entry.entry_id, {}).get(DATA_COORDINATOR)
 
+    if changes["enable_bypass"]:
+        _LOGGER.info("Custom bypass option changed - updating alarm panel entity features to: %s", new_config["enable_bypass"])
+        try:
+            if alarm_panel:
+                alarm_panel.update_enable_bypass(new_config["enable_bypass"])
+                _LOGGER.info("Alarm panel custom bypass feature updated successfully")
+            else:
+                _LOGGER.warning("Alarm panel entity not found, cannot update custom bypass feature")
+        except Exception as e:
+            _LOGGER.error("Error updating alarm panel entity custom bypass feature: %s", e)
+
     # Update areas dynamically (no reload needed)
     if changes["areas"]:
         _LOGGER.info("Areas configuration changed - updating alarm panel entity")
-        _LOGGER.info("Areas to update - away: %s, home: %s, night: %s, disarm: %s",
+        _LOGGER.info("Areas to update - away: %s, home: %s, night: %s, custom_bypass: %s, disarm: %s",
                     new_config.get("areas_away", []),
                     new_config.get("areas_home", []),
                     new_config.get("areas_night", []),
+                    new_config.get("areas_custom_bypass", []),
                     new_config.get("areas_disarm", []))
         try:
             if alarm_panel:
@@ -349,6 +385,7 @@ async def _apply_changes(hass: HomeAssistant, config_entry: ConfigEntry,
                     new_config.get("areas_away", []),
                     new_config.get("areas_home", []),
                     new_config.get("areas_night", []),
+                    new_config.get("areas_custom_bypass", []),
                     new_config.get("areas_disarm", [])
                 )
                 _LOGGER.info("Alarm panel areas updated successfully")
@@ -368,6 +405,7 @@ async def _apply_changes(hass: HomeAssistant, config_entry: ConfigEntry,
                     new_config["macro_away"],
                     new_config["macro_home"],
                     new_config["macro_night"],
+                    new_config["macro_custom_bypass"],
                     new_config["macro_disarm"]
                 )
                 _LOGGER.debug("Alarm panel macros updated successfully")
@@ -384,7 +422,8 @@ async def _apply_changes(hass: HomeAssistant, config_entry: ConfigEntry,
                 alarm_panel.update_arm_modes(
                     new_config["arm_mode_away"],
                     new_config["arm_mode_home"],
-                    new_config["arm_mode_night"]
+                    new_config["arm_mode_night"],
+                    new_config["arm_mode_custom_bypass"]
                 )
                 _LOGGER.debug("Alarm panel arm modes updated successfully")
             else:
