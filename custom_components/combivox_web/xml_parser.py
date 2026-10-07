@@ -171,7 +171,8 @@ class CombivoxXMLParser:
         xml_content: str,
         zones_config: List[Dict[str, Any]] = None,
         max_aree: int = 8,
-        zone_ids: List[int] = None
+        zone_ids: List[int] = None,
+        device_variant: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Parse the status XML and extract:
@@ -180,22 +181,17 @@ class CombivoxXMLParser:
         - Areas state (armed/disarmed)
         - Zones state (open/closed, alarm, armed)
 
-        IMPORTANT: Structure after FFFFFF marker (3 FF bytes):
-        ...4 byte areas state|2 byte variable|FFFFFF marker|2 byte data|zones...
-                            marker_pos-6      marker_pos    marker_pos+6
-
-        - Variable byte (FF/1F/3F): marker_pos-2 : marker_pos
-        - FFFFFF marker: marker_pos : marker_pos+6
-        - 2 "system data" bytes: marker_pos+6 : marker_pos+8
-        - Zones start: marker_pos+8
-
-        Areas state: 4 bytes BEFORE the variable byte (marker_pos-10:marker_pos-6)
+        Zone-open offsets are relative to the FFFFFF marker, in hex
+        characters. The default is marker + 10; the verified Elisa 24 GSM
+        + SmartWeb layout uses marker + 14. Inclusion and alarm memory
+        retain their existing offsets independently of this adjustment.
 
         Args:
             xml_content: Status XML content
             zones_config: List of zone config with zone_id, zone_name, areas
             max_aree: Maximum number of areas (detected from labelAree.xml)
             zone_ids: List of active zone IDs (from numZoneProg.xml), if None uses zones_config
+            device_variant: Device variant identified from jscript9.js
 
         Returns:
             Dict with:
@@ -359,13 +355,18 @@ class CombivoxXMLParser:
                     "status": "armed" if i in armed_areas else "disarmed"
                 }
 
-            # Parse zones (CORRECT APPROACH based on user analysis)
-            # Zones start AFTER the FFFFFF marker (6 characters) + 2 "system data" bytes (4 characters) = +10 characters
-            # Each zone has an offset of 16: eff_id = zone_id + 16
-            # Then calculate position normally: (eff_id-1)//8
-            #
-            # NOTE: Zones are 40 bytes (320 zones max), 8 zones per byte
-            start_z = marker_pos + 10  # AFTER marker (6) + 2 "system data" bytes (4)
+            # Keep the legacy base for inclusion and other zone metadata.
+            start_z = marker_pos + 10
+            open_start = start_z
+            # Observed on Elisa 24 GSM + SmartWeb: zones 10, 11, 13-18
+            # change two bytes later than the legacy open bitmap. Restrict
+            # this quirk to the model and payload layout verified in issue #9.
+            if (
+                device_variant == "Elisa 24 GSM + SmartWeb"
+                and marker_pos == 96
+                and len(si) == 1506
+            ):
+                open_start += 4  # Two bytes = four hex characters.
 
             # INCLUSION STATE: after zones (40 bytes = 80 characters) + padding (2 bytes = 4 characters)
             inclusion_start = start_z + 80 + 4
@@ -408,11 +409,11 @@ class CombivoxXMLParser:
                 bit_index = (eff_id - 1) % 8
 
                 # Verify there are enough bytes
-                if start_z + (byte_index * 2) + 2 > len(si):
+                if open_start + (byte_index * 2) + 2 > len(si):
                     break
 
                 # Read the byte
-                val_hex = si[start_z + (byte_index * 2): start_z + (byte_index * 2) + 2]
+                val_hex = si[open_start + (byte_index * 2): open_start + (byte_index * 2) + 2]
                 try:
                     val = int(val_hex, 16)
 

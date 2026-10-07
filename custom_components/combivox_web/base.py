@@ -104,18 +104,19 @@ class CombivoxWebClient:
             if not await self._authenticate_and_download_config():
                 return False
 
+            # Identify the panel before parsing status: some models use a
+            # different offset for the runtime zone-open bitmap.
+            try:
+                await self._fetch_device_info()
+            except Exception as e:
+                _LOGGER.warning("Could not fetch device variant info: %s", e)
+
             # Try to fetch initial status, but don't fail if offline
             # (we might have cached config)
             try:
                 await self._fetch_initial_status()
             except Exception as e:
                 _LOGGER.warning("Could not fetch initial status (panel may be offline): %s", e)
-
-            # Try to fetch device variant info from jscript9.js
-            try:
-                await self._fetch_device_info()
-            except Exception as e:
-                _LOGGER.warning("Could not fetch device variant info: %s", e)
 
             # If we have config (cached or fresh), connection is successful enough
             return self.is_config_loaded()
@@ -800,7 +801,8 @@ class CombivoxWebClient:
             xml_text,
             zones_config=self._zones_config,
             max_aree=max_aree,
-            zone_ids=self._zone_ids  # Pass zone_ids from numZoneProg.xml
+            zone_ids=self._zone_ids,  # Pass zone_ids from numZoneProg.xml
+            device_variant=(self._device_info or {}).get("variant"),
         )
 
     async def arm_areas(self, areas: List[int], mode: str = "away", arm_mode: str = "normal") -> bool:
