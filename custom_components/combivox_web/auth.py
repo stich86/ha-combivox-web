@@ -151,6 +151,12 @@ class CombivoxAuth:
             for delay in [2, 3, 4, 5, 6, 7]:
                 await asyncio.sleep(1)
 
+                if self._session is None:
+                    # Session closed while waiting (e.g. entry unload/reload):
+                    # abort instead of crashing on a None session.
+                    _LOGGER.debug("Session closed during authentication - aborting")
+                    return False
+
                 async with self._session.post(
                     login2_url,
                     data=data,

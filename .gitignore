@@ -36,3 +36,6 @@ backups/
 
 # Logs
 *.log
+
+# Claude Code / claude-mem local notes
+CLAUDE.md

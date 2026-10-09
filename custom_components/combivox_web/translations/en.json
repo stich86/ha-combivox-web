@@ -21,6 +21,9 @@
     }
   },
   "options": {
+    "error": {
+      "code_required": "The Master PIN code is required and cannot be empty"
+    },
     "step": {
       "init": {
         "title": "Integration Options",

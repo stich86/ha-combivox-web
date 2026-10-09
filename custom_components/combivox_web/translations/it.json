@@ -21,6 +21,9 @@
     }
   },
   "options": {
+    "error": {
+      "code_required": "Il PIN della centrale è obbligatorio e non può essere vuoto"
+    },
     "step": {
       "init": {
         "title": "Opzioni Integrazione",

@@ -101,22 +101,32 @@ class CombivoxOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: Dict[str, Any] | None = None
     ) -> FlowResult:
         """First step: General settings and exclusions."""
+        errors = {}
         if user_input is not None:
-            # Salviamo temporaneamente la scelta nel contesto dell'istanza
-            self._general_data = user_input
-            # Passiamo al prossimo step per configurare i singoli modi
-            return await self.async_step_modes()
+            # The PIN is mandatory: it cannot be empty or whitespace-only
+            if not (user_input.get(CONF_CODE) or "").strip():
+                errors["base"] = "code_required"
+            else:
+                # Temporarily store the choice on the flow instance
+                self._general_data = user_input
+                # Move on to the next step to configure the individual modes
+                return await self.async_step_modes()
 
         options = self._entry.options
         data = self._entry.data
 
+        # The PIN lives in the connection data (entry.data); previous versions
+        # however saved it in the options, where it was ignored: prefer it if
+        # present so the old PIN does not "reappear".
+        current_code = options.get(CONF_CODE, data.get(CONF_CODE, ""))
+
         schema = vol.Schema({
-            vol.Optional(CONF_CODE, default=data.get(CONF_CODE, "")): str,
+            vol.Required(CONF_CODE, default=current_code): str,
             vol.Optional(CONF_SCAN_INTERVAL, default=options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=1, max=300)),
             vol.Optional(CONF_ENABLE_CUSTOM_BYPASS, default=options.get(CONF_ENABLE_CUSTOM_BYPASS, False)): bool,
         })
 
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
 
     async def async_step_modes(
         self, user_input: Dict[str, Any] | None = None
@@ -131,10 +141,20 @@ class CombivoxOptionsFlowHandler(config_entries.OptionsFlow):
         enable_bypass = self._general_data.get(CONF_ENABLE_CUSTOM_BYPASS, False)
 
         if user_input is not None:
-            # Uniamo i dati del primo step con quelli del secondo
+            # Merge the data from the first step with the one from the second
             user_code = self._general_data.get(CONF_CODE, "")
             if user_code and len(user_code) < 6:
                 user_code = user_code.ljust(6, '0')
+
+            # The PIN is connection data: when changed it must be updated in
+            # entry.data (not in the options, where it would be ignored). The
+            # update listener will detect the difference and reload the entry.
+            if user_code and user_code != self._entry.data.get(CONF_CODE):
+                _LOGGER.info("PIN changed in options flow - updating entry data")
+                self.hass.config_entries.async_update_entry(
+                    self._entry,
+                    data={**self._entry.data, CONF_CODE: user_code},
+                )
 
             def to_int_list(lst):
                 return [int(x) for x in lst] if lst else []
@@ -152,7 +172,8 @@ class CombivoxOptionsFlowHandler(config_entries.OptionsFlow):
             arm_mode_custom_bypass = user_input.get(CONF_ARM_MODE_CUSTOM_BYPASS, ARM_MODE_NORMAL) if enable_bypass else ARM_MODE_NORMAL 
 
             result = {
-                CONF_CODE: user_code,
+                # The PIN does not go into the options: it has already been
+                # updated (if changed) in entry.data, the only source the client uses.
                 CONF_SCAN_INTERVAL: self._general_data.get(CONF_SCAN_INTERVAL),
                 CONF_ENABLE_CUSTOM_BYPASS: enable_bypass,
                 CONF_AREAS_AWAY: to_int_list(user_input.get(CONF_AREAS_AWAY, [])),
@@ -172,7 +193,7 @@ class CombivoxOptionsFlowHandler(config_entries.OptionsFlow):
             }
             return self.async_create_entry(title="", data=result)
 
-        # Generazione liste aree e macro (identica a prima)
+        # Generate area and macro lists (same as before)
         select_areas = {str(area["area_id"]): area["area_name"] for area in self._areas_config if area.get("area_name", "").strip()}
         if not select_areas:
             select_areas = {str(i): f"Area {i}" for i in range(1, 9)}
@@ -191,7 +212,7 @@ class CombivoxOptionsFlowHandler(config_entries.OptionsFlow):
                 if str(macro["macro_id"]) == str(macro_id): return macro.get("macro_name", "")
             return "No"
 
-        # Costruiamo lo schema del secondo step
+        # Build the second step schema
         schema_dict = {
             # AWAY MODE
             vol.Optional(CONF_MACRO_AWAY, default=macro_id_to_name(options.get(CONF_MACRO_AWAY, ""))): vol.In(["No"] + macro_names),
@@ -209,7 +230,7 @@ class CombivoxOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional(CONF_ARM_MODE_NIGHT, default=options.get(CONF_ARM_MODE_NIGHT, ARM_MODE_NORMAL)): SelectSelector(SelectSelectorConfig(options=[ARM_MODE_NORMAL, ARM_MODE_IMMEDIATE, ARM_MODE_FORCED], translation_key="arm_mode")),
         }
 
-        # Mostra CUSTOM_BYPASS solo se NON è stato escluso nel primo step
+        # Show CUSTOM_BYPASS only if it was not deselected in the first step
         if enable_bypass:
             schema_dict.update({
                 vol.Optional(CONF_MACRO_CUSTOM_BYPASS, default=macro_id_to_name(options.get(CONF_MACRO_CUSTOM_BYPASS, ""))): vol.In(["No"] + macro_names),

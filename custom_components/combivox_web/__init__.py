@@ -5,7 +5,7 @@ import voluptuous as vol
 from datetime import timedelta
 from typing import Any, Dict, Optional
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
 from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform, CONF_IP_ADDRESS
 
@@ -50,7 +50,6 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 from .const import (
     DOMAIN,
     DATA_COORDINATOR,
-    DATA_UPDATE_LISTENER,
     DATA_CONFIG,
     CONF_IP_ADDRESS,
     CONF_PORT,
@@ -94,6 +93,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     port = entry.data.get(CONF_PORT, 80)
     code = entry.data.get(CONF_CODE)
 
+    # Migration: previous versions saved the changed PIN in the options,
+    # where it was ignored (the client always used entry.data). If present
+    # and different, promote it to the connection data (single source of truth).
+    options_code = entry.options.get(CONF_CODE)
+    if options_code and options_code != code:
+        _LOGGER.info("Found PIN stored in options by a previous version - migrating it to entry data")
+        code = options_code
+        hass.config_entries.async_update_entry(
+            entry,
+            data={**entry.data, CONF_CODE: code},
+            options={k: v for k, v in entry.options.items() if k != CONF_CODE},
+        )
+
     if not ip_address or not code:
         _LOGGER.error("Missing required configuration: ip_address or code")
         return False
@@ -114,11 +126,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     connected = await client.connect()
 
     if not connected:
-        _LOGGER.warning("Failed to connect to Combivox panel - will retry automatically")
         if not client.is_config_loaded():
-            _LOGGER.error("No cached configuration available - cannot setup integration")
-            return False
-        _LOGGER.info("Using cached configuration - entities will be created but unavailable until connection succeeds")
+            # Raise ConfigEntryNotReady instead of failing the setup for good:
+            # HA will retry automatically, so the integration recovers by itself
+            # as soon as the panel accepts the (possibly fixed) PIN.
+            raise ConfigEntryNotReady("Cannot connect to Combivox panel and no cached configuration available")
+        _LOGGER.warning("Failed to connect to Combivox panel - using cached configuration, entities will be unavailable until connection succeeds")
     else:
         _LOGGER.info("Successfully connected to Combivox panel")
 
@@ -164,14 +177,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Preload data
     await coordinator.async_config_entry_first_refresh()
 
-    # Register update listener for options changes
-    update_listener = entry.add_update_listener(options_update_listener)
+    # Register the options update listener exactly once per entry: it must
+    # survive reloads. Unloading removes nothing, but a reload re-runs setup:
+    # registering unconditionally would add a duplicate listener on every
+    # reload, while deregistering on unload would leave a window (between
+    # unload and setup completion) where a saved PIN would be ignored.
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not domain_data.get(f"{entry.entry_id}_update_listener_registered"):
+        entry.add_update_listener(options_update_listener)
+        domain_data[f"{entry.entry_id}_update_listener_registered"] = True
 
     # Store coordinator and client
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+    domain_data[entry.entry_id] = {
         DATA_COORDINATOR: coordinator,
         DATA_CONFIG: client,
-        DATA_UPDATE_LISTENER: update_listener,
     }
 
     # Setup platforms
@@ -449,12 +468,77 @@ async def _apply_changes(hass: HomeAssistant, config_entry: ConfigEntry,
                     current_interval, new_config["scan_interval"])
 
 
+def _get_entry_client(hass: HomeAssistant, entry: ConfigEntry):
+    """Return the live client for the entry, or None if the entry is not loaded."""
+    return hass.data.get(DOMAIN, {}).get(entry.entry_id, {}).get(DATA_CONFIG)
+
+
+async def _handle_pin_change(hass: HomeAssistant, config_entry: ConfigEntry,
+                             recheck: bool = False) -> bool:
+    """Reload the entry when its PIN differs from the one the client is using.
+
+    A reload rebuilds the client (and its authenticated session) from the
+    current entry data. Returns True if a reload was scheduled.
+
+    A reload can take tens of seconds when authentication keeps failing, and
+    this listener fires twice per save (data + options update). If a reload
+    is already in flight we must not just drop the request: schedule a
+    re-check when it completes, so a PIN saved during that window is applied.
+    """
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    reload_task_key = f"{config_entry.entry_id}_pin_reload_task"
+
+    running_task = domain_data.get(reload_task_key)
+    if running_task is not None and not running_task.done():
+        running_task.add_done_callback(
+            lambda _task: hass.async_create_task(
+                _handle_pin_change(hass, config_entry, recheck=True)
+            )
+        )
+        return False
+
+    new_code = config_entry.data.get(CONF_CODE)
+    client = _get_entry_client(hass, config_entry)
+
+    if not new_code or (client is not None and new_code == client.code):
+        return False
+
+    if client is None:
+        if recheck:
+            # Re-check after our own reload found no client: the entry is not
+            # loaded and HA is retrying the setup by itself (already using
+            # the new PIN) - reloading again here would just loop.
+            return False
+        # Fresh save on an entry that is not loaded (setup previously failed,
+        # e.g. a wrong PIN): no client to compare against, but the entry data
+        # just changed - reload to retry the setup with the new PIN.
+        _LOGGER.info("PIN changed while entry is not loaded - reloading config entry to apply the new code")
+    else:
+        _LOGGER.info("PIN changed - reloading config entry to apply the new code")
+
+    reload_task = hass.async_create_task(
+        hass.config_entries.async_reload(config_entry.entry_id)
+    )
+    domain_data[reload_task_key] = reload_task
+    reload_task.add_done_callback(
+        lambda _task: domain_data.pop(reload_task_key, None)
+    )
+    return True
+
+
 async def options_update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
     """Handle options update."""
+    # If the PIN changed, the client must be rebuilt from the new entry data.
+    # When a reload gets scheduled there is no point in applying the other
+    # option changes: the reload will rebuild coordinator and entities.
+    if await _handle_pin_change(hass, config_entry):
+        return
+
     # Get coordinator (required for scan interval updates)
     coordinator = hass.data.get(DOMAIN, {}).get(config_entry.entry_id, {}).get(DATA_COORDINATOR)
     if not coordinator:
-        _LOGGER.error("Coordinator not found in hass.data!")
+        # Normal while a reload is in flight or the setup is failing/retrying
+        _LOGGER.debug("Entry not loaded - skipping options update")
         return
 
     # Extract new configuration from options
@@ -489,24 +573,18 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Close client (cleanup HTTP session and cookies)
     try:
         client = hass.data[DOMAIN][entry.entry_id][DATA_CONFIG]
-        config_file_path = client.get_config_file_path()
         await client.close()
         _LOGGER.info("Client closed successfully")
     except Exception as e:
         _LOGGER.error("Error closing client: %s", e)
-        config_file_path = None
 
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        # Remove update listener
-        hass.data[DOMAIN][entry.entry_id][DATA_UPDATE_LISTENER]()
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-        # Cleanup if no more entries
-        if not hass.data.get(DOMAIN):
-            del hass.data[DOMAIN]
+        # The update listener is intentionally kept registered across reloads
+        # (see async_setup_entry); hass.data[DOMAIN] keeps the per-entry flags.
+        hass.data[DOMAIN].pop(entry.entry_id, None)
 
         # Clean up entity registry - remove all entities for this integration
         from homeassistant.helpers import entity_registry as er
@@ -515,16 +593,33 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         _LOGGER.info("Cleared all entities from registry for config entry %s", entry.entry_id)
 
-        # Delete cached config file
-        if config_file_path:
-            import os
-            try:
-                if os.path.exists(config_file_path):
-                    os.remove(config_file_path)
-                    _LOGGER.info("Deleted cached config file: %s", config_file_path)
-                else:
-                    _LOGGER.debug("Config file not found (already deleted): %s", config_file_path)
-            except Exception as e:
-                _LOGGER.error("Error deleting config file %s: %s", config_file_path, e)
-
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Cleanup when the config entry is removed.
+
+    The cached panel configuration is intentionally kept across reloads:
+    deleting it on unload would leave the integration without its fallback
+    (e.g. after saving a wrong PIN, setup would fail hard with no retry).
+    """
+    # Drop the per-entry listener flag: the entry (and its listener) is gone.
+    hass.data.get(DOMAIN, {}).pop(f"{entry.entry_id}_update_listener_registered", None)
+
+    ip_address = entry.data.get(CONF_IP_ADDRESS)
+    port = entry.data.get(CONF_PORT, 80)
+
+    if not ip_address:
+        return
+
+    config_file_path = hass.config.path(f"combivox_web/config_{ip_address}_{port}.json")
+
+    import os
+    try:
+        if os.path.exists(config_file_path):
+            os.remove(config_file_path)
+            _LOGGER.info("Deleted cached config file: %s", config_file_path)
+        else:
+            _LOGGER.debug("Config file not found (already deleted): %s", config_file_path)
+    except Exception as e:
+        _LOGGER.error("Error deleting config file %s: %s", config_file_path, e)

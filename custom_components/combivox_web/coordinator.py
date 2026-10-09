@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 from datetime import timedelta
 from typing import Any, Dict
 
@@ -27,6 +28,7 @@ class CombivoxDataUpdateCoordinator(DataUpdateCoordinator):
         self._consecutive_failures = 0  # Track consecutive failures
         self._max_consecutive_failures = 2  # Mark unavailable after 2 failures
         self._panel_unavailable = False  # Custom flag - more reliable than last_update_success
+        self._refresh_backoff_until = 0.0  # Monotonic time until which panel requests are skipped
 
         if scan_interval is None:
             scan_interval = DEFAULT_SCAN_INTERVAL
@@ -103,11 +105,38 @@ class CombivoxDataUpdateCoordinator(DataUpdateCoordinator):
             self._custom_unsub = None
         await super().async_shutdown()
 
+    def _increase_backoff(self) -> None:
+        """Back off exponentially when the panel keeps rejecting requests.
+
+        The panel temporarily locks out authentication after too many failed
+        logins: hammering it at every poll would keep the lockout alive even
+        after the PIN is fixed. Skip requests for progressively longer
+        intervals until a poll succeeds again.
+        """
+        if self._consecutive_failures < 3:
+            self._refresh_backoff_until = 0.0
+            return
+
+        backoff = min(30 * (2 ** (self._consecutive_failures - 3)), 300)
+        self._refresh_backoff_until = time.monotonic() + backoff
+        _LOGGER.warning(
+            "Panel unreachable after %d consecutive failures - backing off for %d seconds",
+            self._consecutive_failures, backoff,
+        )
+
     async def _async_update_data(self) -> Dict[str, Any]:
         """Fetch all data from the device with a single HTTP request."""
         # Prevent concurrent polls (avoid spam when panel is down)
         if self._is_polling:
             _LOGGER.debug("Already polling, skipping this update")
+            return self.data if self.data else {"state": "unknown", "zones": {}, "areas": {}}
+
+        # Respect the backoff window: do not touch the panel at all
+        if time.monotonic() < self._refresh_backoff_until:
+            _LOGGER.debug(
+                "Backoff active for %d more seconds - skipping panel request",
+                int(self._refresh_backoff_until - time.monotonic()),
+            )
             return self.data if self.data else {"state": "unknown", "zones": {}, "areas": {}}
 
         self._is_polling = True
@@ -123,6 +152,7 @@ class CombivoxDataUpdateCoordinator(DataUpdateCoordinator):
 
                 self._consecutive_failures = 0
                 self._panel_unavailable = False
+                self._refresh_backoff_until = 0.0
 
                 zones = status.get("zones", {})
                 areas = status.get("areas", {})
@@ -136,6 +166,7 @@ class CombivoxDataUpdateCoordinator(DataUpdateCoordinator):
                 self._consecutive_failures += 1
                 _LOGGER.warning("No data received from panel (failure %d/%d)",
                                self._consecutive_failures, self._max_consecutive_failures)
+                self._increase_backoff()
 
                 if self._consecutive_failures >= self._max_consecutive_failures:
                     # Mark as unavailable and raise exception
@@ -156,6 +187,7 @@ class CombivoxDataUpdateCoordinator(DataUpdateCoordinator):
             self._consecutive_failures += 1
             _LOGGER.error("Error updating data (failure %d/%d): %s",
                         self._consecutive_failures, self._max_consecutive_failures, e)
+            self._increase_backoff()
 
             if self._consecutive_failures >= self._max_consecutive_failures:
                 # Mark as unavailable and raise exception
